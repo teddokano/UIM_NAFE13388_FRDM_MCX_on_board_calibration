@@ -9,6 +9,9 @@
 #include	<time.h>
 #include	<stdarg.h>
 
+constexpr auto time_offset_hour	= 9;
+constexpr auto time_offset_min	= 0;
+
 
 PrintOutput::PrintOutput( const char *file_name, const char *file_ext, bool time_info )
 {
@@ -21,8 +24,14 @@ PrintOutput::PrintOutput( const char *file_name, const char *file_ext, bool time
 
 	if ( time_info )
 	{
-		time_t	current_time;
-		current_time	= time( NULL );
+		time_t		current_time;
+		struct tm	*tmp;
+		
+		current_time	 = time( NULL );
+		tmp				 = localtime( &current_time );
+		tmp->tm_hour	+= time_offset_hour;
+		tmp->tm_min		+= time_offset_min;
+		current_time	 = mktime( tmp );
 
 		strftime( s, 100, "%Y-%m-%d_%a_%H-%M-%S", localtime( &current_time ) );
 		sprintf( filename, "%s_%s.%s", file_name, s, file_ext );
