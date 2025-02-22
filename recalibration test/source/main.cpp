@@ -37,14 +37,6 @@ enum CoeffIndex {
 	CAL_1V5V_CUSTOM,
 };
 
-constexpr ref_points	r[]	= {
-	{ CAL__5V_NONE,    {  5.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
-	{ CAL_10V_NONE,    { 10.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
-	{ CAL__5V_CUSTOM,  {  5.0, 2000 }, {  0.0, 0 }, CAL_FOR_PGA_0_2 },
-	{ CAL_10V_CUSTOM,  { 10.0, 2000 }, {  0.0, 0 }, CAL_FOR_PGA_0_2 },
-	{ CAL_1V5V_NONE,   {  5.0, 2015 }, { 1.0, 16 }, CAL_NONE        },
-	{ CAL_1V5V_CUSTOM, {  5.0, 2015 }, { 1.0, 16 }, CAL_FOR_PGA_0_2 },
-};
 
 using	ch_setting_t	= const uint16_t[ 4 ];
 
@@ -65,7 +57,7 @@ constexpr ch_setting_t	chs[]	= {
 	{ INPUT_GND       , (CAL_10V_CUSTOM  << 12) | 0x0084, 0x2900, 0x0000 },
 };
 
-void	recalibrate( int pga_gain_index, int ch_GND, int ch_REFH );
+void	recalibrate( int pga_gain_index, bool use_positive_side = true, int ch_GND = 14, int ch_REF = 15 );
 void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
@@ -84,56 +76,10 @@ int main( void )
 	out.printf( "serial number = %llX\r\n", afe.serial_number() );
 	out.printf( "die temperature = %f℃\r\n", afe.temperature() );
 	
-	//
-	//	logical channels setting
-	//
+	for ( auto i = 0; i < 8; i++ )
+		recalibrate( i, false );
 
-	for ( auto i = 0U; i < sizeof( chs ) / sizeof( ch_setting_t ); i++ )
-		afe.logical_ch_config( i, chs[ i ] );
 
-	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
-	logical_ch_config_view();
-
-	//
-	//	gain/offset coefficient settings
-	//
-
-	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers before overwrite ===\r\n" );
-	table_view( 32, 4, []( int v ){ out.printf( "  %8ld @ 0x%04X", afe.reg( v + GAIN_COEFF0 ), v + GAIN_COEFF0 ); }, [](){ out.printf( "\r\n" ); });
-
-	recalibrate( 0, 14, 15 );
-
-	//	gain/offset customization
-	
-	for ( auto i = 0U; i < sizeof( r ) / sizeof( ref_points ); i++ )
-		gain_offset_coeff( afe, r[ i ] );
-
-	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after overwrite ===\r\n" );
-	table_view( 32, 4, []( int v ){ out.printf( "  %8ld @ 0x%04X", afe.reg( v + GAIN_COEFF0 ), v + GAIN_COEFF0 ); }, [](){ out.printf( "\r\n" ); });
-
-	//
-	//	operation with customized gain/offset
-	//
-
-	out.printf( "\r\n" );
-	out.printf( "     count" );
-
-	out.printf( "      NONE" );
-	out.printf( "  Cal_dflt" );
-	out.printf( "   5V_NONE" );
-	out.printf( "    5V_Cal" );
-	out.printf( "  10V_NONE" );
-	out.printf( "   10V_Cal" );
-	out.printf( " 1V5V_NONE" );
-	out.printf( "  1V5V_Cal" );
-
-	out.printf( "      NONE" );
-	out.printf( "  Cal_dflt" );
-	out.printf( "   5V_NONE" );
-	out.printf( "    5V_Cal" );
-	out.printf( "  10V_NONE" );
-	out.printf( "   10V_Cal" );
-	out.printf( "\r\n" );
 
 	raw_t			data;
 	long			count		= 0;
@@ -149,34 +95,54 @@ int main( void )
 			out.screen( ch % 2 ? "\033[49m" : "\033[47m" );
 			out.printf( " %8ld,", data );
 		}
-		//out.printf( "\r\n" );
-		out.printf( "\n" );
+		out.printf( "\r\n" );
+		//out.printf( "\n" );
 
 		wait( 0.05 );
 	}
 }
 
-void recalibrate( int pga_gain_index, int ch_GND, int ch_REFH )
+void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch_REF )
 {
-	out.printf( "  ..on-board calibration is in progress\r\n" );
+	out.printf( "  ..on-board calibration is in progress for gain index: %2d\r\n", pga_gain_index );
 
-	const uint16_t	REF_GND	= 0x0010 | (pga_gain_index << 5);
-	const uint16_t	REF_H	= 0x5010 | (pga_gain_index << 5);
+	uint16_t	reference_source_selection;
+	double		reference_source_voltage;
+
+	if ( pga_gain_index < 5 )
+	{
+		reference_source_selection	= 0x5;	//	REFH for low gain
+		reference_source_voltage	= 2.30;
+	}
+	else
+	{
+		reference_source_selection	= 0x6;	//	REFL for high gain
+		reference_source_voltage	= 0.20;
+	}
+
+	const uint16_t	REF_GND	= 0x0010  | (pga_gain_index << 5);
+	const uint16_t	REF_V	= (reference_source_selection << (use_positive_side ? 12 : 8)) | REF_GND;
 	const uint16_t	ch_config1	= (pga_gain_index << 12) | 0x00E4;
 
-	const ch_setting_t	refh	= { REF_H,   ch_config1, 0x2900, 0x0000 };
+	const ch_setting_t	refh	= { REF_V,   ch_config1, 0x2900, 0x0000 };
 	const ch_setting_t	refg	= { REF_GND, ch_config1, 0x2900, 0x0000 };
 
-	afe.logical_ch_config( ch_REFH, refh );
-	afe.logical_ch_config( ch_GND,  refg );
+	afe.logical_ch_config( ch_REF, refh );
+	afe.logical_ch_config( ch_GND, refg );
 
-	raw_t	data_REFH	= afe.read<raw_t>( ch_REFH, 1.1 );
-	out.printf( "data_REFH = %8d\r\n", data_REFH );
+	logical_ch_config_view();
+	
+	raw_t	data_REF	= afe.read<raw_t>( ch_REF, 1.1 );
+	out.printf( "data_REF = %8d\r\n", data_REF );
 
 	raw_t	data_GND	= afe.read<raw_t>( ch_GND,  1.1 );
-	out.printf( "data_GND  = %8d\r\n", data_GND  );
+	out.printf( "data_GND = %8d\r\n", data_GND  );
 
-	const double	calibrated_gain	= (pow( 2, 23 ) - 1.00) * (2.30 / 25.00) / (double)(data_REFH - data_GND);
+	constexpr double	pga_gain[]	= { 0.2, 0.4, 0.8, 1, 2, 4, 8, 16 };
+
+	const double	fullscale_voltage	= 5.00 / pga_gain[ pga_gain_index ];
+	const double	calibrated_gain		= (pow( 2, 23 ) - 1.00) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
+//	const double	calibrated_gain		= pow( 2, 24 ) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
 
 	out.printf( "gain adjustment = %8lf (%lfdB)\r\n", calibrated_gain, 20 * log10( calibrated_gain ) );
 
@@ -186,7 +152,7 @@ void recalibrate( int pga_gain_index, int ch_GND, int ch_REFH )
 	afe.reg( GAIN_COEFF0   + CAL_FOR_PGA_0_2, (uint32_t)(current_gain_coeff_value * calibrated_gain) );
 	afe.reg( OFFSET_COEFF0 + CAL_FOR_PGA_0_2, current_offset_coeff_value + data_GND );
 	
-	const uint16_t	channel_disabling	= (0x1 << ch_GND) | (0x1 << ch_REFH);
+	const uint16_t	channel_disabling	= (0x1 << ch_GND) | (0x1 << ch_REF);
 	afe.bit_op( CH_CONFIG4, ~channel_disabling, ~channel_disabling );
 }
 
@@ -201,7 +167,7 @@ void logical_ch_config_view( void )
 		if ( en_ch_bitmap & (0x1 << channel) )
 		{
 			afe.command( channel );
-			table_view( 4, 4, []( int v ){ out.printf( "  0x%04X: 0x%04X", v + CH_CONFIG0, afe.reg( v + CH_CONFIG0 ) ); }, [](){ out.printf( "\r\n" ); } );
+			table_view( 4, 4, []( int v ){ out.printf( "  0x%04X　@0x%04X", afe.reg( v + CH_CONFIG0 ), v + CH_CONFIG0 ); }, [](){ out.printf( "\r\n" ); } );
 		}
 		else
 		{
