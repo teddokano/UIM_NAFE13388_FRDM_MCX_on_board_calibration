@@ -131,8 +131,6 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 	afe.logical_ch_config( ch_REF, refh );
 	afe.logical_ch_config( ch_GND, refg );
 
-//	logical_ch_config_view();
-	
 	raw_t	data_REF	= afe.read<raw_t>( ch_REF, 1.1 );
 	out.printf( "data_REF = %8d\r\n", data_REF );
 
@@ -143,7 +141,6 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 
 	const double	fullscale_voltage	= 5.00 / pga_gain[ pga_gain_index ];
 	const double	calibrated_gain		= (pow( 2, 23 ) - 1.00) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
-//	const double	calibrated_gain		= pow( 2, 24 ) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
 
 	out.printf( "gain adjustment = %8lf (%lfdB)\r\n", calibrated_gain, 20 * log10( calibrated_gain ) );
 
