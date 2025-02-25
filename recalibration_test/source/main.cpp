@@ -121,8 +121,8 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 		reference_source_voltage	= 0.20;
 	}
 
-	const uint16_t	REF_GND	= 0x0010  | (pga_gain_index << 5);
-	const uint16_t	REF_V	= (reference_source_selection << (use_positive_side ? 12 : 8)) | REF_GND;
+	const uint16_t	REF_GND		= 0x0010  | (pga_gain_index << 5);
+	const uint16_t	REF_V		= (reference_source_selection << (use_positive_side ? 12 : 8)) | REF_GND;
 	const uint16_t	ch_config1	= (pga_gain_index << 12) | 0x00E4;
 
 	const ch_setting_t	refh	= { REF_V,   ch_config1, 0x2900, 0x0000 };
@@ -132,9 +132,8 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 	afe.logical_ch_config( ch_GND, refg );
 
 	raw_t	data_REF	= afe.read<raw_t>( ch_REF, 1.1 );
-	out.printf( "data_REF = %8d\r\n", data_REF );
-
 	raw_t	data_GND	= afe.read<raw_t>( ch_GND,  1.1 );
+	out.printf( "data_REF = %8d\r\n", data_REF );
 	out.printf( "data_GND = %8d\r\n", data_GND  );
 
 	constexpr double	pga_gain[]	= { 0.2, 0.4, 0.8, 1, 2, 4, 8, 16 };
