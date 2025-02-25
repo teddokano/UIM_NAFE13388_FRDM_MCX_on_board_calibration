@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>recalibration test</name>
+	<name>recalibration_test</name>
 	<comment></comment>
 	<projects>
 		<project>_r01lib_frdm_mcxn947</project>

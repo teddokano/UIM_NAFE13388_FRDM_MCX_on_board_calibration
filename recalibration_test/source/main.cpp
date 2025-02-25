@@ -106,10 +106,11 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 {
 	out.printf( "  ..on-board calibration is in progress for gain index: %2d\r\n", pga_gain_index );
 
-	uint16_t	reference_source_selection;
-	double		reference_source_voltage;
+	constexpr	auto	low_gain_index	= 4;
+	uint16_t			reference_source_selection;
+	double				reference_source_voltage;
 
-	if ( pga_gain_index < 5 )
+	if ( pga_gain_index <= low_gain_index )
 	{
 		reference_source_selection	= 0x5;	//	REFH for low gain
 		reference_source_voltage	= 2.30;
@@ -130,7 +131,7 @@ void recalibrate( int pga_gain_index, bool use_positive_side, int ch_GND, int ch
 	afe.logical_ch_config( ch_REF, refh );
 	afe.logical_ch_config( ch_GND, refg );
 
-	logical_ch_config_view();
+//	logical_ch_config_view();
 	
 	raw_t	data_REF	= afe.read<raw_t>( ch_REF, 1.1 );
 	out.printf( "data_REF = %8d\r\n", data_REF );
