@@ -22,28 +22,50 @@ using enum	NAFE13388_UIM::Register24;
 using enum	NAFE13388_UIM::Command;
 
 using 	raw_t			= NAFE13388_UIM::raw_t;
-using 	microvolt_t		= NAFE13388_UIM::microvolt_t;
-
-constexpr int	CAL_FOR_PGA_0_2		= 0;
 
 constexpr int	INPUT_GND			= 0x0010;
 constexpr int	INPUT_A1P_SINGLE	= 0x1010;
-constexpr int	INPUT_A1N_SINGLE	= 0x0110;
-constexpr int	INPUT_A1__DIFF		= 0x1110;
-//constexpr int	ch_config3			= 0x2E09;
-//constexpr int	ch_config3			= 0x2E08;
-constexpr int	ch_config3			= 0x2E01;
+
+enum CoeffIndex {
+	CAL_FOR_PGA_0_2	= 0,
+	CAL_NONE		= 8,
+	CAL__5V_NONE,
+	CAL_10V_NONE,
+	CAL__5V_CUSTOM,
+	CAL_10V_CUSTOM,
+	CAL_1V5V_NONE,
+	CAL_1V5V_CUSTOM,
+};
+
+constexpr ref_points	r[]	= {
+	{ CAL__5V_NONE,    {  5.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
+	{ CAL_10V_NONE,    { 10.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
+	{ CAL__5V_CUSTOM,  {  5.0, 2000 }, {  0.0, 0 }, CAL_FOR_PGA_0_2 },
+	{ CAL_10V_CUSTOM,  { 10.0, 2000 }, {  0.0, 0 }, CAL_FOR_PGA_0_2 },
+	{ CAL_1V5V_NONE,   {  5.0, 2015 }, { 1.0, 16 }, CAL_NONE        },
+	{ CAL_1V5V_CUSTOM, {  5.0, 2015 }, { 1.0, 16 }, CAL_FOR_PGA_0_2 },
+};
 
 using	ch_setting_t	= const uint16_t[ 4 ];
 
 constexpr ch_setting_t	chs[]	= {
-	{ INPUT_GND,        (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, ch_config3 },
-	{ INPUT_A1P_SINGLE, (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, ch_config3 },
-	{ INPUT_A1N_SINGLE, (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, ch_config3 },
-	{ INPUT_A1__DIFF,   (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, ch_config3 },
+	{ INPUT_A1P_SINGLE, (CAL_NONE        << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL__5V_NONE    << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL__5V_CUSTOM  << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL_10V_NONE    << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL_10V_CUSTOM  << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL_1V5V_NONE   << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_A1P_SINGLE, (CAL_1V5V_CUSTOM << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL_NONE        << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL_FOR_PGA_0_2 << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL__5V_NONE    << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL__5V_CUSTOM  << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL_10V_NONE    << 12) | 0x0084, 0x2900, 0x0000 },
+	{ INPUT_GND       , (CAL_10V_CUSTOM  << 12) | 0x0084, 0x2900, 0x0000 },
 };
 
-void	recalibrate( int pga_gain_index, int ch_GND, int ch_REFH );
+void	reg_dump( NAFE13388_UIM::Register24 addr, int length );
 void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
@@ -72,13 +94,55 @@ int main( void )
 	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
 	logical_ch_config_view();
 
-//	recalibrate( 0, 14, 15 );
-	table_view( 32, 4, []( int v ){ out.printf( "  %8ld @ 0x%04X", afe.reg( v + GAIN_COEFF0 ), v + GAIN_COEFF0 ); }, [](){ out.printf( "\r\n" ); });
+	//
+	//	gain/offset coefficient settings
+	//
 
-	out.printf( "\r\ncount, A1P, A1N, A1P - A1N\r\n" );
+	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers default values ===\r\n" );
+	reg_dump( GAIN_COEFF0, 32 );
 
-//	raw_t			data;
-	microvolt_t		data;
+#if 0
+	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
+
+	recalibrate( afe, 0 );
+
+	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after on-board calibration ===\r\n" );
+	reg_dump( GAIN_COEFF0, 32 );
+#endif
+
+	//	gain/offset customization
+	
+	for ( auto i = 0U; i < sizeof( r ) / sizeof( ref_points ); i++ )
+		gain_offset_coeff( afe, r[ i ] );
+
+	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after overwrite ===\r\n" );
+	reg_dump( GAIN_COEFF0, 32 );
+
+	//
+	//	operation with customized gain/offset
+	//
+
+	out.printf( "\r\n" );
+	out.printf( "     count" );
+
+	out.printf( "      NONE" );
+	out.printf( "  Cal_dflt" );
+	out.printf( "   5V_NONE" );
+	out.printf( "    5V_Cal" );
+	out.printf( "  10V_NONE" );
+	out.printf( "   10V_Cal" );
+	out.printf( " 1V5V_NONE" );
+	out.printf( "  1V5V_Cal" );
+
+	out.printf( "      NONE" );
+	out.printf( "  Cal_dflt" );
+	out.printf( "   5V_NONE" );
+	out.printf( "    5V_Cal" );
+	out.printf( "  10V_NONE" );
+	out.printf( "   10V_Cal" );
+	out.printf( "\r\n" );
+
+	raw_t			data;
 	long			count		= 0;
 	constexpr float read_delay	= 0.01;
 
@@ -88,48 +152,20 @@ int main( void )
 		
 		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
 		{
-			data	= afe.read<microvolt_t>( ch, read_delay );
+			data	= afe.read<raw_t>( ch, read_delay );
 			out.screen( ch % 2 ? "\033[49m" : "\033[47m" );
-			out.printf( " %+8.5lf,", data * 0.000001 );
+			out.printf( " %8ld,", data );
 		}
-		out.printf( "\r\n" );
+		//out.printf( "\r\n" );
+		out.printf( "\n" );
 
 		wait( 0.05 );
 	}
 }
 
-void recalibrate( int pga_gain_index, int ch_GND, int ch_REFH )
+void reg_dump( NAFE13388_UIM::Register24 addr, int length )
 {
-	out.printf( "  ..on-board calibration is in progress\r\n" );
-
-	const uint16_t	REF_GND	= 0x0010 | (pga_gain_index << 5);
-	const uint16_t	REF_H	= 0x5010 | (pga_gain_index << 5);
-	const uint16_t	ch_config1	= (pga_gain_index << 12) | 0x00E4;
-
-	const ch_setting_t	refh	= { REF_H,   ch_config1, 0x2900, 0x0000 };
-	const ch_setting_t	refg	= { REF_GND, ch_config1, 0x2900, 0x0000 };
-
-	afe.logical_ch_config( ch_REFH, refh );
-	afe.logical_ch_config( ch_GND,  refg );
-
-	raw_t	data_REFH	= afe.read<raw_t>( ch_REFH, 1.1 );
-	out.printf( "data_REFH = %8d\r\n", data_REFH );
-
-	raw_t	data_GND	= afe.read<raw_t>( ch_GND,  1.1 );
-	out.printf( "data_GND  = %8d\r\n", data_GND  );
-
-	const double	calibrated_gain	= (pow( 2, 23 ) - 1.00) * (2.30 / 25.00) / (double)(data_REFH - data_GND);
-
-	out.printf( "gain adjustment = %8lf (%lfdB)\r\n", calibrated_gain, 20 * log10( calibrated_gain ) );
-
-	const double	current_gain_coeff_value	= (double)afe.reg( GAIN_COEFF0 + pga_gain_index );
-	const uint32_t	current_offset_coeff_value	= afe.reg( OFFSET_COEFF0 + CAL_FOR_PGA_0_2 );
-
-	afe.reg( GAIN_COEFF0   + CAL_FOR_PGA_0_2, (uint32_t)(current_gain_coeff_value * calibrated_gain) );
-	afe.reg( OFFSET_COEFF0 + CAL_FOR_PGA_0_2, current_offset_coeff_value + data_GND );
-	
-	const uint16_t	channel_disabling	= (0x1 << ch_GND) | (0x1 << ch_REFH);
-	afe.bit_op( CH_CONFIG4, ~channel_disabling, ~channel_disabling );
+	table_view( length, 4, [ & ]( int v ){ out.printf( "  %8ld @ 0x%04X", afe.reg( v + addr ), v + addr ); }, [](){ out.printf( "\r\n" ); });
 }
 
 void logical_ch_config_view( void )
