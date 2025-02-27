@@ -32,7 +32,8 @@ constexpr int	INPUT_A1N_SINGLE	= 0x0110;
 constexpr int	INPUT_A1__DIFF		= 0x1110;
 //constexpr int	ch_config3			= 0x2E09;
 //constexpr int	ch_config3			= 0x2E08;
-constexpr int	ch_config3			= 0x2E01;
+//constexpr int	ch_config3			= 0x2E01;
+constexpr int	ch_config3			= 0x0000;
 
 using	ch_setting_t	= const uint16_t[ 4 ];
 

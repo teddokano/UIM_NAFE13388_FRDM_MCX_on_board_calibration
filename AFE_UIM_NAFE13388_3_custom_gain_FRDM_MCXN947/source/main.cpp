@@ -9,7 +9,6 @@
 #include	<math.h>
 #include	<array>
 
-#include	"coeffs.h"
 #include	"PrintOutput.h"
 
 SPI				spi( D11, D12, D13, D10 );	//	MOSI, MISO, SCLK, CS
@@ -22,6 +21,8 @@ using enum	NAFE13388_UIM::Register24;
 using enum	NAFE13388_UIM::Command;
 
 using 	raw_t			= NAFE13388_UIM::raw_t;
+using 	ref_points		= NAFE13388_UIM::ref_points;
+using	ch_setting_t	= NAFE13388_UIM::ch_setting_t;
 
 constexpr int	INPUT_GND			= 0x0010;
 constexpr int	INPUT_A1P_SINGLE	= 0x1010;
@@ -37,7 +38,7 @@ enum CoeffIndex {
 	CAL_1V5V_CUSTOM,
 };
 
-constexpr ref_points	r[]	= {
+constexpr NAFE13388_UIM::ref_points	r[]	= {
 	{ CAL__5V_NONE,    {  5.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
 	{ CAL_10V_NONE,    { 10.0, 2000 }, {  0.0, 0 }, CAL_NONE        },
 	{ CAL__5V_CUSTOM,  {  5.0, 2000 }, {  0.0, 0 }, CAL_FOR_PGA_0_2 },
@@ -45,8 +46,6 @@ constexpr ref_points	r[]	= {
 	{ CAL_1V5V_NONE,   {  5.0, 2015 }, { 1.0, 16 }, CAL_NONE        },
 	{ CAL_1V5V_CUSTOM, {  5.0, 2015 }, { 1.0, 16 }, CAL_FOR_PGA_0_2 },
 };
-
-using	ch_setting_t	= const uint16_t[ 4 ];
 
 constexpr ch_setting_t	chs[]	= {
 	{ INPUT_A1P_SINGLE, (CAL_NONE        << 12) | 0x0084, 0x2900, 0x0000 },
@@ -104,7 +103,7 @@ int main( void )
 #if 0
 	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
 
-	recalibrate( afe, 0 );
+	afe.recalibrate( 0 );
 
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after on-board calibration ===\r\n" );
 	reg_dump( GAIN_COEFF0, 32 );
@@ -113,7 +112,7 @@ int main( void )
 	//	gain/offset customization
 	
 	for ( auto i = 0U; i < sizeof( r ) / sizeof( ref_points ); i++ )
-		gain_offset_coeff( afe, r[ i ] );
+		afe.gain_offset_coeff( r[ i ] );
 
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after overwrite ===\r\n" );
 	reg_dump( GAIN_COEFF0, 32 );
