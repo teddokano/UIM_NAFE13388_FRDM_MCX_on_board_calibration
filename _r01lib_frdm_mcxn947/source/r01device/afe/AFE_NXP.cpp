@@ -52,6 +52,20 @@ void AFE_base::start_and_delay( int ch, float delay )
 	}
 }
 
+int AFE_base::bit_count( uint32_t value )
+{
+	constexpr int	bit_length	= 32;
+	int				count	= 0;
+		
+	for ( int i = 0; i < bit_length; i++ ) {
+		if ( value & (0x1 << i) )
+			count++;
+	}
+	
+	return count;
+}
+
+
 /* NAFE13388_Base class ******************************************/
 
 NAFE13388_Base::NAFE13388_Base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) 
@@ -116,14 +130,9 @@ void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint
 	
 	const uint16_t	setbit	= 0x1 << ch;
 	const uint16_t	bits	= bit_op( CH_CONFIG4, ~setbit, setbit );
-
-	enabled_channels	= 0;
 	
-	for ( int i = 0; i < 16; i++ ) {
-		if ( bits & (0x1 << i) )
-			enabled_channels++;
-	}
-	
+	enabled_channels	= bit_count( bits );
+			
 	if ( cc0 & 0x0010 )
 		coeff_uV[ ch ]	= ((10.0 / (double)(1L << 24)) / pga_gain[ (cc0 >> 5) & 0x7 ]) * 1e6;
 	else
@@ -133,6 +142,14 @@ void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint
 void NAFE13388_Base::logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )
 {	
 	logical_ch_config( ch, cc[ 0 ], cc[ 1 ], cc[ 2 ], cc[ 3 ] );
+}
+
+void NAFE13388_Base::logical_ch_disable( int ch )
+{	
+	const uint16_t	clearingbit	= 0x1 << ch;
+	const uint16_t	bits		= bit_op( CH_CONFIG4, ~clearingbit, ~clearingbit );
+
+	enabled_channels	= bit_count( bits );
 }
 
 int32_t NAFE13388_Base::adc_read( int ch )
@@ -276,8 +293,8 @@ void NAFE13388_Base::recalibrate( int pga_gain_index, bool use_positive_side, in
 	reg( GAIN_COEFF0   + pga_gain_index, (uint32_t)(current_gain_coeff_value * calibrated_gain) );
 	reg( OFFSET_COEFF0 + pga_gain_index, current_offset_coeff_value + data_GND );
 
-	const uint16_t	channel_disabling	= (0x1 << ch_GND) | (0x1 << ch_REF);
-	bit_op( CH_CONFIG4, ~channel_disabling, ~channel_disabling );
+	logical_ch_disable( ch_GND );
+	logical_ch_disable( ch_REF );
 }
 
 

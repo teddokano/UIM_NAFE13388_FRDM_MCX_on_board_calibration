@@ -94,6 +94,12 @@ public:
 	 */
 	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )	= 0;
 
+	/** Logical channel disable
+	 *
+	 * @param ch logical channel number (0 ~ 15)
+	 */
+	virtual void logical_ch_disable( int ch )	= 0;
+
 	/** ADC channel read
 	 *
 	 * @param ch logical channel number (0 ~ 15)
@@ -130,9 +136,11 @@ public:
 	double	coeff_uV[ 16 ];
 
 private:
-	void start_and_delay( int ch, float delay );
+	void	start_and_delay( int ch, float delay );
 
 protected:
+	int 	bit_count( uint32_t value );
+
 	DigitalIn	pin_nINT;
 	DigitalIn	pin_DRDY;
 	DigitalOut	pin_SYN;
@@ -186,6 +194,12 @@ public:
 	 * @param cc array for CH_CONFIG0, CH_CONFIG1, CH_CONFIG2 and CH_CONFIG3 values
 	 */
 	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] );
+
+	/** Logical channel disable
+	 *
+	 * @param ch logical channel number (0 ~ 15)
+	 */
+	virtual void logical_ch_disable( int ch );
 
 	/** ADC channel read
 	 *

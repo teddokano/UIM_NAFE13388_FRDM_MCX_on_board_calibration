@@ -9,7 +9,6 @@
 #include	<math.h>
 #include	<array>
 
-#include	"coeffs.h"
 #include	"PrintOutput.h"
 
 SPI				spi( D11, D12, D13, D10 );	//	MOSI, MISO, SCLK, CS
@@ -81,7 +80,7 @@ int main( void )
 	for ( auto i = 0; i < 8; i++ )
 	{
 		printf( "  ..on-board calibration is in progress for gain index: %2d\r\n", i );
-		recalibrate( afe, i, false );
+		afe.recalibrate( i, false );
 	}
 
 	table_view( 32, 4, []( int v ){ out.printf( "  0x%04X　@0x%04X", afe.reg( v + GAIN_COEFF0 ), v + GAIN_COEFF0 ); }, [](){ out.printf( "\r\n" ); } );

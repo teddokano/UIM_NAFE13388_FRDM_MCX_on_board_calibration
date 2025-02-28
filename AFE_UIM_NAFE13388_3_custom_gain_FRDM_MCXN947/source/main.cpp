@@ -100,7 +100,7 @@ int main( void )
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers default values ===\r\n" );
 	reg_dump( GAIN_COEFF0, 32 );
 
-#if 0
+#if 1
 	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
 
 	afe.recalibrate( 0 );
