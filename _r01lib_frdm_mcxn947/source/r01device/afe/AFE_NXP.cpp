@@ -243,7 +243,7 @@ void NAFE13388_Base::gain_offset_coeff( const ref_points &ref )
 	reg( OFFSET_COEFF0 + ref.coeff_index, offset_coeff_new );
 }
 
-void NAFE13388_Base::recalibrate( int pga_gain_index, int channel_selection, double reference_source_voltage, int input_select, bool use_positive_side )
+void NAFE13388_Base::recalibrate( int pga_gain_index, int channel_selection, int input_select, double reference_source_voltage, bool use_positive_side )
 {
 	constexpr	auto	low_gain_index	= 4;
 	auto				channel_in_use	= false;
