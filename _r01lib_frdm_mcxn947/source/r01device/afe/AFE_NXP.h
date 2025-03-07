@@ -64,10 +64,8 @@ public:
 	/** Begin the device operation
 	 *
 	 *	NAFE13388 initialization. It does following steps
-	 *	(1) Set pins 2 and 3 are input for nINT and nDRDY
-	 *	(2) Set pins 5 and 6 are output and fixed to HIGH for ADC_SYN and ADC_nRESET
-	 *	(3) Call reset()
-	 *	(4) Call boot()
+	 *	(1) Call reset()
+	 *	(2) Call boot()
 	 */
 	virtual void begin( void );
 
@@ -157,8 +155,7 @@ public:
 	/** Destractor */
 	virtual ~NAFE13388_Base();
 	
-
-	using	ch_setting_t	= const uint16_t[ 4 ];
+	using	ch_setting_t	= uint16_t[ 4 ];
 
 	typedef struct	_reference_point	{
 		double	voltage;
@@ -469,8 +466,25 @@ public:
 	 */
 	float	temperature( void );
 	
+	
+	/** Gain and offset coefficient customization
+	 *
+	 *	Sets gain and offset coefficients with given target ADC read-out values at two reference voltaeg points
+	 * @param ref struct to define the target coefficient index and two reference poins and reference pre-calibrated coeffs
+	 */
 	void	gain_offset_coeff( const ref_points &ref );
-	void	recalibrate( int pga_gain_index, bool use_positive_side = true, int ch_GND = 14, int ch_REF = 15 );
+
+	/** On-board calibration with specified input and voltage
+	 *
+	 *	Updates coefficients at pga_gain_index
+	 *	
+	 * @param pga_gain_index			PGA gain index to measure and update the coefficients
+	 * @param channel_selection			Logical channel number for calibration use
+	 * @param reference_source_voltage	Reference voltage. This is not required if internal reference is used
+	 * @param input_select				Physical input channel selection. It will use internal voltage reference if this value is 0
+	 * @param use_positive_side			Physical input channel selection AnP or AnN
+	 */
+	void	recalibrate( int pga_gain_index, int channel_selection, double reference_source_voltage, int input_select, bool use_positive_side );
 };
 
 class NAFE13388 : public NAFE13388_Base
