@@ -230,7 +230,7 @@ void NAFE13388_Base::gain_offset_coeff( const ref_points &ref )
 	int32_t	gain_coeff_cal		= reg( GAIN_COEFF0   + ref.cal_index );
 	int32_t	offsset_coeff_cal	= reg( OFFSET_COEFF0 + ref.cal_index );
 	int32_t	gain_coeff_new		= round( gain_coeff_cal * custom_gain );
-	int32_t	offset_coeff_new	= custom_offset - offsset_coeff_cal;
+	int32_t	offset_coeff_new	= round( custom_offset - offsset_coeff_cal );
 
 #if 0
 	printf( "ref_point_high = %8ld @%6.3lf\r\n", ref.high.data, ref.high.voltage );
