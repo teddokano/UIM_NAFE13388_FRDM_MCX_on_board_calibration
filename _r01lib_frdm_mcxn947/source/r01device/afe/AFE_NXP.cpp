@@ -162,16 +162,13 @@ double NAFE13388_Base::calc_delay( int ch )
 	double		base_freq			= data_rates[ adc_data_rate ];
 	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
 	
+	if ( (28 < adc_data_rate) || (4 < adc_sinc) || (adc_data_rate < 12) && (adc_sinc) )
+		return INFINITY;
+	
 	if ( !adc_normal_setting  )
 	{
 		base_freq	/= (adc_sinc + 1);
 	}
-
-	if ( (adc_data_rate < 12) && (adc_sinc) )
-	{
-		base_freq	= 0.0;	//	invalid seting
-	}
-	
 	
 #if 1
 	printf( "base_freq = %lf\r\n", base_freq );

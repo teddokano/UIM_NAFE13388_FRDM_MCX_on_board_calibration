@@ -51,8 +51,8 @@ class AFE_base : public SPI_for_AFE
 public:
 
 	/** ADC readout types */
-	using raw_t			= int32_t;
-	using microvolt_t	= double;
+	using raw_t								= int32_t;
+	using microvolt_t						= double;
 	constexpr static float immidiate_read	= -1.0;
 
 	/** Constructor to create a AFE_base instance */
