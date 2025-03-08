@@ -45,6 +45,7 @@
 #include	<stdint.h>
 #include	"r01lib.h"
 #include	"SPI_for_AFE.h"
+#include	<cmath>
 
 class AFE_base : public SPI_for_AFE
 {
@@ -54,6 +55,7 @@ public:
 	using raw_t								= int32_t;
 	using microvolt_t						= double;
 	constexpr static float immidiate_read	= -1.0;
+	constexpr static float default_delay	= INFINITY;
 
 	/** Constructor to create a AFE_base instance */
 	AFE_base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET );
@@ -119,7 +121,7 @@ public:
 	 * @return ADC readout value
 	 */
 	template<class T>
-	T read( int ch, float delay = immidiate_read );
+	T read( int ch, float delay = default_delay );
 
 	/** Start ADC
 	 *
@@ -135,6 +137,7 @@ public:
 
 	/** Channel delay */
 	double	ch_delay[ 16 ];
+	static double	delay_accuracy;
 
 private:
 	void	start_and_delay( int ch, float delay );

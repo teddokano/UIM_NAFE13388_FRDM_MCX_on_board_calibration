@@ -13,6 +13,8 @@
 using enum	NAFE13388_Base::Register16;
 using enum	NAFE13388_Base::Register24;
 
+double	AFE_base::delay_accuracy	= 1.01;
+
 /* AFE_base class ******************************************/
 
 AFE_base::AFE_base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) : 
@@ -33,6 +35,9 @@ void AFE_base::begin( void )
 template<> 
 int32_t AFE_base::read( int ch, float delay )
 {
+	if ( delay == INFINITY )
+		delay	= ch_delay[ ch ] * delay_accuracy;
+	
 	start_and_delay( ch, delay );
 	return adc_read( ch );
 };
@@ -141,15 +146,15 @@ void NAFE13388_Base::logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )
 
 double NAFE13388_Base::calc_delay( int ch )
 {
-	constexpr double	data_rates[]	= {	   288000, 192000, 144000, 96000, 72000, 48000, 36000, 24000, 
-												18000,  12000,   9000,  6000,  4500,  3000,  2250,  1125, 
-												 562.5,    400,    300,   200,   100,    60,    50,    30, 
-													25,     20,     15,    10,   7.5, 						};
-	constexpr uint16_t	delays[]		= {		0,   2,   4,   6,   8,  10,   12,  14, 
-											   16,  18,  20,  28,  38,  40,   42,  56, 
-											   64,  76,  90, 128, 154, 178, 204, 224, 
-											  256, 358, 512, 716, 
-											  1024, 1664, 3276, 7680, 19200, 23040, };
+	constexpr static double	data_rates[]	= {	   288000, 192000, 144000, 96000, 72000, 48000, 36000, 24000, 
+													18000,  12000,   9000,  6000,  4500,  3000,  2250,  1125, 
+													 562.5,    400,    300,   200,   100,    60,    50,    30, 
+														25,     20,     15,    10,   7.5, 						};
+	constexpr static uint16_t	delays[]	= {		0,   2,   4,   6,   8,  10,   12,  14, 
+												   16,  18,  20,  28,  38,  40,   42,  56, 
+												   64,  76,  90, 128, 154, 178, 204, 224, 
+												  256, 358, 512, 716, 
+												  1024, 1664, 3276, 7680, 19200, 23040, };
 	
 	uint16_t ch_config1	= reg( CH_CONFIG1 );
 	uint16_t ch_config2	= reg( CH_CONFIG2 );
@@ -162,15 +167,15 @@ double NAFE13388_Base::calc_delay( int ch )
 	double		base_freq			= data_rates[ adc_data_rate ];
 	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
 	
-	if ( (28 < adc_data_rate) || (4 < adc_sinc) || (adc_data_rate < 12) && (adc_sinc) )
-		return INFINITY;
+	if ( (28 < adc_data_rate) || (4 < adc_sinc) || ((adc_data_rate < 12) && (adc_sinc)) )
+		return 0.00;
 	
 	if ( !adc_normal_setting  )
 	{
 		base_freq	/= (adc_sinc + 1);
 	}
 	
-#if 1
+#if 0
 	printf( "base_freq = %lf\r\n", base_freq );
 	printf( "delay_setting = %lf\r\n", delay_setting  );
 #endif
@@ -324,13 +329,11 @@ void NAFE13388_Base::recalibrate( int pga_gain_index, int channel_selection, int
 	const ch_setting_t	refh	= { REF_V,   ch_config1, ch_config2, ch_config3 };
 	const ch_setting_t	refg	= { REF_GND, ch_config1, ch_config2, ch_config3 };
 
-	constexpr	auto	delay_to_read_adc	= 1.1;
-
 	logical_ch_config( channel_selection, refh );	
-	raw_t	data_REF	= read<raw_t>( channel_selection, delay_to_read_adc );
+	raw_t	data_REF	= read<raw_t>( channel_selection );
 
 	logical_ch_config( channel_selection, refg );
-	raw_t	data_GND	= read<raw_t>( channel_selection, delay_to_read_adc );
+	raw_t	data_GND	= read<raw_t>( channel_selection );
 
 	constexpr double	pga_gain[]	= { 0.2, 0.4, 0.8, 1, 2, 4, 8, 16 };
 
