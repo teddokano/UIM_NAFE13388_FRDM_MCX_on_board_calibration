@@ -135,7 +135,52 @@ void NAFE13388_Base::logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )
 		coeff_uV[ ch ]	= ((10.0 / (double)(1L << 24)) / pga_gain[ (cc[ 0 ] >> 5) & 0x7 ]) * 1e6;
 	else
 		coeff_uV[ ch ]	= (4.0 / (double)(1L << 24)) * 1e6;
+	
+	ch_delay[ ch ]	= calc_delay( ch );
 }
+
+double NAFE13388_Base::calc_delay( int ch )
+{
+	constexpr double	data_rates[]	= {	   288000, 192000, 144000, 96000, 72000, 48000, 36000, 24000, 
+												18000,  12000,   9000,  6000,  4500,  3000,  2250,  1125, 
+												 562.5,    400,    300,   200,   100,    60,    50,    30, 
+													25,     20,     15,    10,   7.5, 						};
+	constexpr uint16_t	delays[]		= {		0,   2,   4,   6,   8,  10,   12,  14, 
+											   16,  18,  20,  28,  38,  40,   42,  56, 
+											   64,  76,  90, 128, 154, 178, 204, 224, 
+											  256, 358, 512, 716, 
+											  1024, 1664, 3276, 7680, 19200, 23040, };
+	
+	uint16_t ch_config1	= reg( CH_CONFIG1 );
+	uint16_t ch_config2	= reg( CH_CONFIG2 );
+	
+	uint8_t		adc_data_rate		= (ch_config1 >>  3) & 0x001F;
+	uint8_t		adc_sinc			= (ch_config1 >>  0) & 0x0007;
+	uint8_t		ch_delay			= (ch_config2 >> 10) & 0x003F;
+	bool		adc_normal_setting	= (ch_config2 >>  9) & 0x0001;
+	
+	double		base_freq			= data_rates[ adc_data_rate ];
+	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
+	
+	if ( !adc_normal_setting  )
+	{
+		base_freq	/= (adc_sinc + 1);
+	}
+
+	if ( (adc_data_rate < 12) && (adc_sinc) )
+	{
+		base_freq	= 0.0;	//	invalid seting
+	}
+	
+	
+#if 1
+	printf( "base_freq = %lf\r\n", base_freq );
+	printf( "delay_setting = %lf\r\n", delay_setting  );
+#endif
+	
+	return (1 / base_freq) + delay_setting;
+}
+
 
 void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
 {	
@@ -273,12 +318,14 @@ void NAFE13388_Base::recalibrate( int pga_gain_index, int channel_selection, int
 		}
 	}
 	
-	const uint16_t	REF_GND		= 0x0010  | (pga_gain_index << 5);
-	const uint16_t	REF_V		= (input_select << (use_positive_side ? 12 : 8)) | REF_GND;
-	const uint16_t	ch_config1	= (pga_gain_index << 12) | 0x00E4;
+	const uint16_t		REF_GND		= 0x0010  | (pga_gain_index << 5);
+	const uint16_t		REF_V		= (input_select << (use_positive_side ? 12 : 8)) | REF_GND;
+	const uint16_t		ch_config1	= (pga_gain_index << 12) | 0x00E4;
+	constexpr uint16_t	ch_config2	= 0x8400;
+	constexpr uint16_t	ch_config3	= 0x0000;
 
-	const ch_setting_t	refh	= { REF_V,   ch_config1, 0x2900, 0x0000 };
-	const ch_setting_t	refg	= { REF_GND, ch_config1, 0x2900, 0x0000 };
+	const ch_setting_t	refh	= { REF_V,   ch_config1, ch_config2, ch_config3 };
+	const ch_setting_t	refg	= { REF_GND, ch_config1, ch_config2, ch_config3 };
 
 	constexpr	auto	delay_to_read_adc	= 1.1;
 

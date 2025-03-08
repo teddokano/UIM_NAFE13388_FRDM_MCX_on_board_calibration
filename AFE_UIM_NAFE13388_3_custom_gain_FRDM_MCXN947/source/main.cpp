@@ -102,7 +102,7 @@ int main( void )
 
 	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
 
-	afe.recalibrate( 0 );
+	afe.recalibrate( 0, 8 );
 
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after on-board calibration ===\r\n" );
 	reg_dump( GAIN_COEFF0, 32 );

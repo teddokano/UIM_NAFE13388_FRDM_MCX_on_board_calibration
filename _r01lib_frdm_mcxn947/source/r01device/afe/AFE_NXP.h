@@ -133,6 +133,9 @@ public:
 	/** Coefficient to convert from ADC read value to micro-volt */
 	double	coeff_uV[ 16 ];
 
+	/** Channel delay */
+	double	ch_delay[ 16 ];
+
 private:
 	void	start_and_delay( int ch, float delay );
 
@@ -192,6 +195,10 @@ public:
 	 */
 	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] );
 
+private:	
+	double 	calc_delay( int ch );
+
+public:
 	/** Logical channel disable
 	 *
 	 * @param ch logical channel number (0 ~ 15)
