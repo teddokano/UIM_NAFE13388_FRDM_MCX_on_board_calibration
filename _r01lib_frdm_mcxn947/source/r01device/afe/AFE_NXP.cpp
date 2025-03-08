@@ -177,9 +177,10 @@ double NAFE13388_Base::calc_delay( int ch )
 	if ( ch_chop )
 		base_freq	/= 2;
 	
-#if 0
+#if 1
 	printf( "base_freq = %lf\r\n", base_freq );
 	printf( "delay_setting = %lf\r\n", delay_setting  );
+	printf( "total delay = %lf\r\n", (1 / base_freq) + delay_setting  );
 #endif
 	
 	return (1 / base_freq) + delay_setting;

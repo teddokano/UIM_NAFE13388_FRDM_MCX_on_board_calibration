@@ -54,9 +54,9 @@ int main( void )
 		chs[ i ][ 1 ]	|= (i + 16) << 3 | 4;
 
 		chs[ i ][ 2 ]	|= (0 << 10);
-		chs[ i ][ 2 ]	|= (0 <<  9);
+		chs[ i ][ 2 ]	|= (1 <<  9);
 		chs[ i ][ 2 ]	|= (0 <<  8);
-		chs[ i ][ 2 ]	|= (1 <<  7);
+		chs[ i ][ 2 ]	|= (0 <<  7);
 	}
 	
 	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::ch_setting_t ); i++ )
@@ -84,10 +84,14 @@ int main( void )
 	{
 		for ( auto ch = 0; ch < 16; ch++ )
 		{
+#if 1
 			if ( output_type_selection == MICRO_VOLT )
 				printf( " %11.2f,", afe.read<microvolt_t>( ch ) * 0.000001 );
 			else
 				printf( " %8ld,",   afe.read<raw_t>( ch ) );
+#else
+			afe.read<microvolt_t>( ch );
+#endif
 		}
 		printf( "\r\n" );
 		wait( 0.1 );
