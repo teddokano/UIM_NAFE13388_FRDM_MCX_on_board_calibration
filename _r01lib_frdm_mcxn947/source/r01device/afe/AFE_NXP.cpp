@@ -163,6 +163,7 @@ double NAFE13388_Base::calc_delay( int ch )
 	uint8_t		adc_sinc			= (ch_config1 >>  0) & 0x0007;
 	uint8_t		ch_delay			= (ch_config2 >> 10) & 0x003F;
 	bool		adc_normal_setting	= (ch_config2 >>  9) & 0x0001;
+	bool		ch_chop				= (ch_config2 >>  7) & 0x0001;
 	
 	double		base_freq			= data_rates[ adc_data_rate ];
 	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
@@ -171,9 +172,10 @@ double NAFE13388_Base::calc_delay( int ch )
 		return 0.00;
 	
 	if ( !adc_normal_setting  )
-	{
 		base_freq	/= (adc_sinc + 1);
-	}
+	
+	if ( ch_chop )
+		base_freq	/= 2;
 	
 #if 0
 	printf( "base_freq = %lf\r\n", base_freq );

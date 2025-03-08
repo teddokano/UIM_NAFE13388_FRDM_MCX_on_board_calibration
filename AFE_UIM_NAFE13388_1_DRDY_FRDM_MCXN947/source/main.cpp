@@ -56,6 +56,7 @@ int main( void )
 		chs[ i ][ 2 ]	|= (0 << 10);
 		chs[ i ][ 2 ]	|= (0 <<  9);
 		chs[ i ][ 2 ]	|= (0 <<  8);
+		chs[ i ][ 2 ]	|= (1 <<  7);
 	}
 	
 	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::ch_setting_t ); i++ )
