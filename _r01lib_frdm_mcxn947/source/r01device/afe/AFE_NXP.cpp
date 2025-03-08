@@ -13,7 +13,7 @@
 using enum	NAFE13388_Base::Register16;
 using enum	NAFE13388_Base::Register24;
 
-double	AFE_base::delay_accuracy	= 1.01;
+double	AFE_base::delay_accuracy	= 1.1;
 
 /* AFE_base class ******************************************/
 
