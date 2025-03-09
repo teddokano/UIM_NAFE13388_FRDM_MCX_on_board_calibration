@@ -27,6 +27,8 @@ void	DRDY_int_handler( void );
 void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
+DigitalOut	pin( D0 );
+
 NAFE13388_UIM::ch_setting_t	chs[ 16 ];
 
 int main( void )
@@ -53,7 +55,7 @@ int main( void )
 
 		chs[ i ][ 1 ]	|= (i + 16) << 3 | 4;
 
-		chs[ i ][ 2 ]	|= (0 << 10);
+		chs[ i ][ 2 ]	|= (19 << 10);
 		chs[ i ][ 2 ]	|= (0 <<  9);
 		chs[ i ][ 2 ]	|= (0 <<  8);
 		chs[ i ][ 2 ]	|= (0 <<  7);

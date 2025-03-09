@@ -177,7 +177,7 @@ double NAFE13388_Base::calc_delay( int ch )
 	if ( ch_chop )
 		base_freq	/= 2;
 	
-#if 1
+#if 0
 	printf( "base_freq = %lf\r\n", base_freq );
 	printf( "delay_setting = %lf\r\n", delay_setting  );
 	printf( "total delay = %lf\r\n", (1 / base_freq) + delay_setting  );
@@ -343,7 +343,7 @@ void NAFE13388_Base::recalibrate( int pga_gain_index, int channel_selection, int
 	const double	fullscale_voltage	= 5.00 / pga_gain[ pga_gain_index ];
 	const double	calibrated_gain		= pow( 2, 23 ) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
 
-#if 1
+#if 0
 	printf( "data_REF = %8ld\r\n", data_REF );
 	printf( "data_GND = %8ld\r\n", data_GND  );
 	printf( "gain adjustment = %8lf (%lfdB)\r\n", calibrated_gain, 20 * log10( calibrated_gain ) );

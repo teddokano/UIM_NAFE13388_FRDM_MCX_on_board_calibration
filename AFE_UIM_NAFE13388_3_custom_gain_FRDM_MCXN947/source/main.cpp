@@ -79,8 +79,10 @@ int main( void )
 
 	afe.begin();
 	
+	uint64_t	sn	= afe.serial_number();
+
 	out.printf( "part number   = %04lX (revision: %01X)\r\n", afe.part_number(), afe.revision_number() );
-	out.printf( "serial number = %llX\r\n", afe.serial_number() );
+	out.printf( "serial number = %06lX%06lX\r\n", (uint32_t)(sn >> 24), (uint32_t)sn & 0xFFFFFF );	//	to use NewlibNano
 	out.printf( "die temperature = %f℃\r\n", afe.temperature() );
 	
 	//
@@ -150,7 +152,6 @@ int main( void )
 
 	raw_t			data;
 	long			count		= 0;
-	constexpr float read_delay	= 0.01;
 
 	while ( true )
 	{
@@ -158,7 +159,7 @@ int main( void )
 		
 		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
 		{
-			data	= afe.read<raw_t>( ch, read_delay );
+			data	= afe.read<raw_t>( ch );
 			out.screen( ch % 2 ? "\033[49m" : "\033[47m" );
 			out.printf( " %8ld,", data );
 		}
