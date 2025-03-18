@@ -58,6 +58,9 @@ public:
 	 * @return data value
 	 */
 	int32_t read_r24( uint16_t reg );
+	
+	void burst( uint32_t *data, int length, int width = 3 );
+
 private:
 	SPI& _spi;
 };

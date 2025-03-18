@@ -7,7 +7,6 @@
  */
 
 #include "fsl_common.h"
-//#define	SDK_DELAY_USE_DWT
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID

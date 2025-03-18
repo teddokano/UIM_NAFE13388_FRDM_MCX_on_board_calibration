@@ -8,8 +8,6 @@
 
 #include "AFE_NXP.h"
 
-#define	READ_BUFFER_SIZE	10
-
 SPI_for_AFE::SPI_for_AFE( SPI& spi ) : _spi( spi )
 {
 }
@@ -20,6 +18,8 @@ SPI_for_AFE::~SPI_for_AFE()
 
 void SPI_for_AFE::txrx( uint8_t *data, int size )
 {
+	static constexpr int	READ_BUFFER_SIZE	= 2 + 16 * 3; //	(2[command] + 16[logical_channels] * 3[bytes])
+
 	uint8_t	r_data[ READ_BUFFER_SIZE ];
 	
 	_spi.write( data, r_data, size );
@@ -75,4 +75,25 @@ int32_t SPI_for_AFE::read_r24( uint16_t reg )
 	int32_t	r	= ( (r0 << 24) | (r1 << 16) | (r2 << 8) );
 
 	return r >> 8;
+}
+
+void SPI_for_AFE::burst( uint32_t *data, int length, int width )
+{
+	uint8_t		v[ 2 + 3 * 16 ];
+	uint16_t	reg	  = (0x2005 << 1) | 0x4000;	// CMD_BURST_DATA
+
+	v[ 0 ]	= (uint8_t)(reg >> 8);
+	v[ 1 ]	= (uint8_t)(reg & 0xFF);
+	
+	txrx( v, 2 + length * width );
+	
+	for ( auto i = 0; i < length; i++ )
+	{
+		int32_t	r0	= v[ 2 + i * width ];
+		int32_t	r1	= v[ 3 + i * width  ];
+		int32_t	r2	= v[ 4 + i * width  ];
+		int32_t	r	= ( (r0 << 24) | (r1 << 16) | (r2 << 8) );
+
+		*data++	= r >> 8;
+	}
 }

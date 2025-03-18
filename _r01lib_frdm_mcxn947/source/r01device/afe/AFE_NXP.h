@@ -46,6 +46,8 @@
 #include	"r01lib.h"
 #include	"SPI_for_AFE.h"
 #include	<cmath>
+#include	<vector>
+#include	<variant>
 
 class AFE_base : public SPI_for_AFE
 {
@@ -123,6 +125,9 @@ public:
 	template<class T>
 	T read( int ch, float delay = default_delay );
 
+	virtual void multi_read( raw_t *data )		= 0;
+	//virtual void multi_read( microvolt_t *data )	= 0;
+	
 	/** Start ADC
 	 *
 	 * @param ch logical channel number (0 ~ 15)
@@ -132,18 +137,41 @@ public:
 	/** Number of enabled logical channels */
 	int		enabled_channels;
 	
+	inline double raw2uv( raw_t value, int ch )
+	{
+		return value * coeff_uV[ ch ];
+	}
+	
+	inline double raw2mv( raw_t value, int ch )
+	{
+		return value * coeff_uV[ ch ] * 1e-3;
+	}
+	
+	inline double raw2v( raw_t value, int ch )
+	{
+		return value * coeff_uV[ ch ] * 1e-6;
+	}
+	
+	inline double drdy_delay( int ch )
+	{
+		return ch_delay[ ch ];
+	}
+	
+private:
+	void	start_and_delay( int ch, float delay );
+
+
+protected:
+	int 	bit_count( uint32_t value );
+
 	/** Coefficient to convert from ADC read value to micro-volt */
 	double	coeff_uV[ 16 ];
 
 	/** Channel delay */
 	double	ch_delay[ 16 ];
+	double	total_delay;
 	static double	delay_accuracy;
 
-private:
-	void	start_and_delay( int ch, float delay );
-
-protected:
-	int 	bit_count( uint32_t value );
 
 	DigitalIn	pin_nINT;
 	DigitalIn	pin_DRDY;
@@ -154,13 +182,6 @@ protected:
 class NAFE13388_Base : public AFE_base
 {
 public:
-	
-	/** Constructor to create a AFE_base instance */
-	NAFE13388_Base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET );
-
-	/** Destractor */
-	virtual ~NAFE13388_Base();
-	
 	using	ch_setting_t	= uint16_t[ 4 ];
 
 	typedef struct	_reference_point	{
@@ -174,7 +195,13 @@ public:
 		reference_point	low;
 		int				cal_index;
 	} ref_points;
+	
+	/** Constructor to create a AFE_base instance */
+	NAFE13388_Base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET );
 
+	/** Destractor */
+	virtual ~NAFE13388_Base();
+	
 	/** Set system-level config registers */
 	virtual void boot( void );
 
@@ -200,6 +227,7 @@ public:
 
 private:	
 	double 	calc_delay( int ch );
+	void 	channel_info_update( uint16_t value );
 
 public:
 	/** Logical channel disable
@@ -214,12 +242,29 @@ public:
 	 */
 	virtual int32_t	adc_read( int ch );
 
+	void multi_read( raw_t *data );
+	void multi_read( microvolt_t *data );
+
+	
 	/** Start ADC
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
 	virtual void start( int ch );
 
+	constexpr static double	pga_gain[]	= { 0.2, 0.4, 0.8, 1, 2, 4, 8, 16 };
+
+	enum GainPGA : uint8_t {
+		G_PGA_x_0_2	= 0,
+		G_PGA_x_0_4,
+		G_PGA_x_0_8,
+		G_PGA_x_1_0,
+		G_PGA_x_2_0,
+		G_PGA_x_4_0,
+		G_PGA_x_8_0,
+		G_PGA_x16_0,
+	};
+	
 	enum class Register16 : uint16_t {
 		CH_CONFIG0				= 0x20,
 		CH_CONFIG1				= 0x21,
@@ -384,18 +429,9 @@ public:
 		CMD_CALC_CRC_FAC	= 0x2008,
 	};
 
-	template<class T>
-	friend T operator+( const T& rn, const int n )
-	{
-		return T( static_cast<uint16_t>( rn ) + n );
-	}
-
-	template<class T>
-	friend T operator+( const int n, const T& rn )
-	{
-		return T( n + static_cast<uint16_t>( rn ) );
-	}
-
+	using	RegisterVariant	= std::variant<Register16, Register24>;
+	using	RegVct			= std::vector<RegisterVariant>;
+	
 	/** Command
 	 *	
 	 * @param com "Comand" type or uint16_t value
@@ -484,6 +520,12 @@ public:
 	 */
 	void	gain_offset_coeff( const ref_points &ref );
 
+	enum CalibrationError : int {
+		NoError		=  0,
+		GainError	= -1,
+		OffsetError	= -2,
+	};
+	
 	/** On-board calibration with specified input and voltage
 	 *
 	 *	Updates coefficients at pga_gain_index
@@ -493,8 +535,12 @@ public:
 	 * @param reference_source_voltage	Reference voltage. This is not required if internal reference is used
 	 * @param input_select				Physical input channel selection. It will use internal voltage reference if this value is 0
 	 * @param use_positive_side			Physical input channel selection AnP or AnN
+	 * @return CalibrationError 		Error code
 	 */
-	void	recalibrate( int pga_gain_index, int channel_selection = 15, int input_select = 0, double reference_source_voltage = 0, bool use_positive_side = true );
+	int		self_calibrate( int pga_gain_index, int channel_selection = 15, int input_select = 0, double reference_source_voltage = 0, bool use_positive_side = true );
+
+	/** Blinks LEDs on GPIO pins */
+	void blink_leds( void );
 };
 
 class NAFE13388 : public NAFE13388_Base
@@ -515,7 +561,28 @@ public:
 
 	/** Destractor */
 	virtual ~NAFE13388_UIM();
+
+	void blink_leds( void );
 };
 
+inline NAFE13388_Base::Register16 operator+( NAFE13388_Base::Register16 rn, int n )
+{
+    return static_cast<NAFE13388_Base::Register16>( static_cast<uint16_t>( rn ) + n );
+}
+
+inline NAFE13388_Base::Register16 operator+( int n, NAFE13388_Base::Register16 rn )
+{
+    return static_cast<NAFE13388_Base::Register16>( n + static_cast<uint16_t>( rn ) );
+}
+
+inline NAFE13388_Base::Register24 operator+( NAFE13388_Base::Register24 rn, int n )
+{
+    return static_cast<NAFE13388_Base::Register24>( static_cast<uint16_t>( rn ) + n );
+}
+
+inline NAFE13388_Base::Register24 operator+( int n, NAFE13388_Base::Register24 rn )
+{
+    return static_cast<NAFE13388_Base::Register24>( n + static_cast<uint16_t>( rn ) );
+}
 
 #endif //	ARDUINO_AFE_DRIVER_H
