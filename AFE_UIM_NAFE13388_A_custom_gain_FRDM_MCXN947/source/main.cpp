@@ -108,7 +108,7 @@ int main( void )
 		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
 		{
 			data	= afe.read<raw_t>( ch, read_delay );
-			out.printf( " %12.10lf,", afe.raw2v( data, ch ) );
+			out.printf( " %12.10lf,", afe.raw2v( ch, data ) );
 			out.printf( " 0x%06lX,", data );
 			out.printf( " %8ld,",    data );
 			out.printf( " 0x%06lX,", (uint32_t)(data / 838.8608) );

@@ -137,17 +137,17 @@ public:
 	/** Number of enabled logical channels */
 	int		enabled_channels;
 	
-	inline double raw2uv( raw_t value, int ch )
+	inline double raw2uv( int ch, raw_t value )
 	{
 		return value * coeff_uV[ ch ];
 	}
 	
-	inline double raw2mv( raw_t value, int ch )
+	inline double raw2mv( int ch, raw_t value )
 	{
 		return value * coeff_uV[ ch ] * 1e-3;
 	}
 	
-	inline double raw2v( raw_t value, int ch )
+	inline double raw2v( int ch, raw_t value )
 	{
 		return value * coeff_uV[ ch ] * 1e-6;
 	}
