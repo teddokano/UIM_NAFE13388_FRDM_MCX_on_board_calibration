@@ -62,6 +62,24 @@ public:
 	void burst( uint32_t *data, int length, int width = 3 );
 
 private:
+
+	//	functions to access AFE multibyte data access independent from endianess
+	inline int32_t get_data16( uint8_t *vp )
+	{
+		return ((uint16_t)(*(vp + 0)) << 8) | *(vp + 1);
+	}
+	
+	inline int32_t get_data24( uint8_t *vp )
+	{
+		int32_t	r0	= *(vp + 0);
+		int32_t	r1	= *(vp + 1);
+		int32_t	r2	= *(vp + 2);
+		int32_t	r	= ( (r0 << 24) | (r1 << 16) | (r2 << 8) );
+
+		return r >> 8;
+	}
+
+	static constexpr int	command_length	= 2;
 	SPI& _spi;
 };
 

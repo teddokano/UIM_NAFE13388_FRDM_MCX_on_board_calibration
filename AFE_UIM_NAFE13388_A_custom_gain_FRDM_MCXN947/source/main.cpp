@@ -75,10 +75,12 @@ int main( void )
 
 	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
 
+#if 0
 	//afe.recalibrate( 0 );
 
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after on-board calibration ===\r\n" );
 	reg_dump( GAIN_COEFF0, 32 );
+#endif
 
 #if 0
 	afe.recalibrate( 0, 2, 2.5 );
@@ -106,7 +108,7 @@ int main( void )
 		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
 		{
 			data	= afe.read<raw_t>( ch, read_delay );
-			out.printf( " %12.10lf,", data * afe.coeff_uV[ ch ] * 1e-6 );
+			out.printf( " %12.10lf,", afe.raw2v( data, ch ) );
 			out.printf( " 0x%06lX,", data );
 			out.printf( " %8ld,",    data );
 			out.printf( " 0x%06lX,", (uint32_t)(data / 838.8608) );
