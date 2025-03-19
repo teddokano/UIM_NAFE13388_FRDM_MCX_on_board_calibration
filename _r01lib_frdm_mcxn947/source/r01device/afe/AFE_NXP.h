@@ -159,7 +159,7 @@ public:
 	
 private:
 	void	start_and_delay( int ch, float delay );
-
+	
 
 protected:
 	int 	bit_count( uint32_t value );
@@ -181,21 +181,38 @@ protected:
 
 class NAFE13388_Base : public AFE_base
 {
+	class LogicalChannel
+	{
+	private:
+		int		channel_number;
+		bool	enabled;
+		double	delay;
+		
+	public:
+		using	ch_setting_t	= uint16_t[ 4 ];
+
+		typedef struct	_reference_point	{
+			double	voltage;
+			int32_t	data;
+		} reference_point;
+
+		typedef struct	_ref_points	{
+			int				coeff_index;
+			reference_point	high;
+			reference_point	low;
+			int				cal_index;
+		} ref_points;
+		
+		LogicalChannel( int channel_number );
+		~LogicalChannel();
+		
+		void	open(  int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3  );
+		void	open( const uint16_t (&cc)[ 4 ] );
+		void	close( void );
+		void	read( double delay = default_delay );
+	}
+
 public:
-	using	ch_setting_t	= uint16_t[ 4 ];
-
-	typedef struct	_reference_point	{
-		double	voltage;
-		int32_t	data;
-	} reference_point;
-
-	typedef struct	_ref_points	{
-		int				coeff_index;
-		reference_point	high;
-		reference_point	low;
-		int				cal_index;
-	} ref_points;
-	
 	/** Constructor to create a AFE_base instance */
 	NAFE13388_Base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET );
 
