@@ -181,12 +181,15 @@ protected:
 
 class NAFE13388_Base : public AFE_base
 {
+public:
 	class LogicalChannel
 	{
 	private:
+		NAFE13388_Base	*outerp;
 		int		channel_number;
 		bool	enabled;
 		double	delay;
+		double	coeff_uV;
 		
 	public:
 		using	ch_setting_t	= uint16_t[ 4 ];
@@ -203,14 +206,18 @@ class NAFE13388_Base : public AFE_base
 			int				cal_index;
 		} ref_points;
 		
-		LogicalChannel( int channel_number );
+		LogicalChannel();
+		LogicalChannel( NAFE13388_Base *outer_ptr, int channel_number );
 		~LogicalChannel();
 		
-		void	open(  int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3  );
+		void	open( uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3  );
 		void	open( const uint16_t (&cc)[ 4 ] );
 		void	close( void );
-		void	read( double delay = default_delay );
-	}
+		raw_t	read( double delay = default_delay );
+
+	private:	
+		double 	calc_delay( void );
+	};
 
 public:
 	/** Constructor to create a AFE_base instance */
@@ -224,6 +231,8 @@ public:
 
 	/** Issue RESET command */
 	virtual void reset( bool hardware_reset = false );
+	
+	std::vector<LogicalChannel>	logical_channel{ 16 };
 	
 	/** Configure logical channel
 	 *
@@ -243,7 +252,6 @@ public:
 	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] );
 
 private:	
-	double 	calc_delay( int ch );
 	void 	channel_info_update( uint16_t value );
 
 public:
@@ -535,7 +543,7 @@ public:
 	 *	Sets gain and offset coefficients with given target ADC read-out values at two reference voltaeg points
 	 * @param ref struct to define the target coefficient index and two reference poins and reference pre-calibrated coeffs
 	 */
-	void	gain_offset_coeff( const ref_points &ref );
+	void	gain_offset_coeff( const LogicalChannel::ref_points &ref );
 
 	enum CalibrationError : int {
 		NoError		=  0,

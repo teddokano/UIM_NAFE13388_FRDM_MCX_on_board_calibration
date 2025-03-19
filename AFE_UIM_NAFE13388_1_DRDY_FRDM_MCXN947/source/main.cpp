@@ -27,7 +27,7 @@ void	DRDY_int_handler( void );
 void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
-NAFE13388_UIM::ch_setting_t	chs[ 16 ];
+NAFE13388_UIM::LogicalChannel::ch_setting_t	chs[ 16 ];
 
 int main( void )
 {
@@ -42,7 +42,7 @@ int main( void )
 
 	afe.bit_op( SYS_CONFIG0, ~0x8000, 0x8000 );	//	use longer DRDY pulse
 
-	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::ch_setting_t ); i++ )
+	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::LogicalChannel::ch_setting_t ); i++ )
 	{
 		chs[ i ][ 0 ]	 = 0x0070;
 		chs[ i ][ 1 ]	 = 0x3000;
@@ -59,8 +59,8 @@ int main( void )
 		chs[ i ][ 2 ]	|= (1 <<  7);
 	}
 	
-	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::ch_setting_t ); i++ )
-		afe.logical_ch_config( i, chs[ i ] );
+	for ( auto i = 0U; i < sizeof( chs ) / sizeof( NAFE13388_UIM::LogicalChannel::ch_setting_t ); i++ )
+		afe.logical_channel[ i ].open( chs[ i ] );
 
 	printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
 	logical_ch_config_view();

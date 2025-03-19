@@ -9,6 +9,7 @@
 #include	"AFE_NXP.h"
 #include	"r01lib.h"
 #include	<math.h>
+#include	<vector>
 
 using enum	NAFE13388_Base::Register16;
 using enum	NAFE13388_Base::Register24;
@@ -46,7 +47,7 @@ int32_t AFE_base::read( int ch, float delay )
 template<>
 double AFE_base::read( int ch, float delay )
 {
-	return read<int32_t>( ch, delay ) * coeff_uV[ ch ];
+	return raw2uv( ch, read<int32_t>( ch, delay ) );
 };
 
 void AFE_base::start_and_delay( int ch, float delay )
@@ -72,11 +73,112 @@ int AFE_base::bit_count( uint32_t value )
 }
 
 
+NAFE13388_Base::LogicalChannel::LogicalChannel( NAFE13388_Base *op, int _channel_number )
+	: outerp( op ), channel_number( _channel_number ), enabled( false ), delay( 0.00 ), coeff_uV( 0.00 )
+{}
+
+
+NAFE13388_Base::LogicalChannel::LogicalChannel()
+	: outerp( nullptr ), channel_number( -1 ), enabled( false ), delay( 0.00 ), coeff_uV( 0.00 )
+{}
+
+
+NAFE13388_Base::LogicalChannel::~LogicalChannel()
+{}
+
+
+void NAFE13388_Base::LogicalChannel::open( uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
+{	
+	const ch_setting_t	tmp_ch_config	= { cc0, cc1, cc2, cc3 };
+	open( tmp_ch_config );
+}
+
+void NAFE13388_Base::LogicalChannel::open( const uint16_t (&cc)[ 4 ]  )
+{
+	outerp->command( channel_number );
+	
+	for ( auto i = 0; i < 4; i++ )
+		outerp->reg( CH_CONFIG0 + i, cc[ i ] );
+	
+	const uint16_t	setbit	= 0x1 << channel_number;
+	const uint16_t	bits	= outerp->bit_op( CH_CONFIG4, ~setbit, setbit );
+	
+	if ( cc[ 0 ] & 0x0010 )
+		coeff_uV	= ((10.0 / (double)(1L << 24)) / pga_gain[ (cc[ 0 ] >> 5) & 0x7 ]) * 1e6;
+	else
+		coeff_uV	= (4.0 / (double)(1L << 24)) * 1e6;
+	
+	delay	= calc_delay();
+	outerp->channel_info_update( bits );
+}
+
+void NAFE13388_Base::LogicalChannel::close( void )
+{	
+	const uint16_t	clearingbit	= 0x1 << channel_number;
+	const uint16_t	bits		= outerp->bit_op( CH_CONFIG4, ~clearingbit, ~clearingbit );
+
+	outerp->channel_info_update( bits );
+}
+
+double NAFE13388_Base::LogicalChannel::calc_delay( void )
+{
+	constexpr static double	data_rates[]	= {	   288000, 192000, 144000, 96000, 72000, 48000, 36000, 24000, 
+													18000,  12000,   9000,  6000,  4500,  3000,  2250,  1125, 
+													 562.5,    400,    300,   200,   100,    60,    50,    30, 
+														25,     20,     15,    10,   7.5, 						};
+	constexpr static uint16_t	delays[]	= {		0,   2,   4,   6,   8,  10,   12,  14, 
+												   16,  18,  20,  28,  38,  40,   42,  56, 
+												   64,  76,  90, 128, 154, 178, 204, 224, 
+												  256, 358, 512, 716, 
+												  1024, 1664, 3276, 7680, 19200, 23040, };
+	
+	outerp->command( channel_number );
+
+	uint16_t ch_config1	= outerp->reg( CH_CONFIG1 );
+	uint16_t ch_config2	= outerp->reg( CH_CONFIG2 );
+	
+	uint8_t		adc_data_rate		= (ch_config1 >>  3) & 0x001F;
+	uint8_t		adc_sinc			= (ch_config1 >>  0) & 0x0007;
+	uint8_t		ch_delay			= (ch_config2 >> 10) & 0x003F;
+	bool		adc_normal_setting	= (ch_config2 >>  9) & 0x0001;
+	bool		ch_chop				= (ch_config2 >>  7) & 0x0001;
+	
+	double		base_freq			= data_rates[ adc_data_rate ];
+	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
+	
+	if ( (28 < adc_data_rate) || (4 < adc_sinc) || ((adc_data_rate < 12) && (adc_sinc)) )
+		return 0.00;
+	
+	if ( !adc_normal_setting  )
+		base_freq	/= (adc_sinc + 1);
+	
+	if ( ch_chop )
+		base_freq	/= 2;
+	
+#if 0
+	printf( "base_freq = %lf\r\n", base_freq );
+	printf( "delay_setting = %lf\r\n", delay_setting  );
+	printf( "channel delay = %lf\r\n", (1 / base_freq) + delay_setting  );
+#endif
+	
+	return (1 / base_freq) + delay_setting;
+}
+
+
+NAFE13388_Base::raw_t NAFE13388_Base::LogicalChannel::read( double delay )
+{
+	return	outerp->read<NAFE13388_Base::raw_t>( channel_number, delay );
+}
+
 /* NAFE13388_Base class ******************************************/
 
 NAFE13388_Base::NAFE13388_Base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) 
 	: AFE_base( spi, nINT, DRDY, SYN, nRESET )
 {
+	logical_channel.reserve( 16 );
+	
+	for ( int i = 0; i < 16; i++ )
+		logical_channel.emplace_back( this, i );
 }
 
 NAFE13388_Base::~NAFE13388_Base()
@@ -120,21 +222,18 @@ void NAFE13388_Base::reset( bool hardware_reset )
 
 void NAFE13388_Base::logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )
 {	
-	command( ch );
-	
-	for ( auto i = 0; i < 4; i++ )
-		reg( CH_CONFIG0 + i, cc[ i ] );
-	
-	const uint16_t	setbit	= 0x1 << ch;
-	const uint16_t	bits	= bit_op( CH_CONFIG4, ~setbit, setbit );
-	
-	if ( cc[ 0 ] & 0x0010 )
-		coeff_uV[ ch ]	= ((10.0 / (double)(1L << 24)) / pga_gain[ (cc[ 0 ] >> 5) & 0x7 ]) * 1e6;
-	else
-		coeff_uV[ ch ]	= (4.0 / (double)(1L << 24)) * 1e6;
-	
-	ch_delay[ ch ]		= calc_delay( ch );
-	channel_info_update( bits );
+	logical_channel[ ch ].open( cc );
+}
+
+void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
+{	
+	const LogicalChannel::ch_setting_t	tmp_ch_config	= { cc0, cc1, cc2, cc3 };
+	logical_channel[ ch ].open( tmp_ch_config );
+}
+
+void NAFE13388_Base::logical_ch_disable( int ch )
+{
+	logical_channel[ ch ].close();
 }
 
 void NAFE13388_Base::channel_info_update( uint16_t value )
@@ -153,64 +252,7 @@ void NAFE13388_Base::channel_info_update( uint16_t value )
 	}
 }
 
-double NAFE13388_Base::calc_delay( int ch )
-{
-	constexpr static double	data_rates[]	= {	   288000, 192000, 144000, 96000, 72000, 48000, 36000, 24000, 
-													18000,  12000,   9000,  6000,  4500,  3000,  2250,  1125, 
-													 562.5,    400,    300,   200,   100,    60,    50,    30, 
-														25,     20,     15,    10,   7.5, 						};
-	constexpr static uint16_t	delays[]	= {		0,   2,   4,   6,   8,  10,   12,  14, 
-												   16,  18,  20,  28,  38,  40,   42,  56, 
-												   64,  76,  90, 128, 154, 178, 204, 224, 
-												  256, 358, 512, 716, 
-												  1024, 1664, 3276, 7680, 19200, 23040, };
-	
-	command( ch );
 
-	uint16_t ch_config1	= reg( CH_CONFIG1 );
-	uint16_t ch_config2	= reg( CH_CONFIG2 );
-	
-	uint8_t		adc_data_rate		= (ch_config1 >>  3) & 0x001F;
-	uint8_t		adc_sinc			= (ch_config1 >>  0) & 0x0007;
-	uint8_t		ch_delay			= (ch_config2 >> 10) & 0x003F;
-	bool		adc_normal_setting	= (ch_config2 >>  9) & 0x0001;
-	bool		ch_chop				= (ch_config2 >>  7) & 0x0001;
-	
-	double		base_freq			= data_rates[ adc_data_rate ];
-	double		delay_setting		= delays[ ch_delay ] / 4608000.00;
-	
-	if ( (28 < adc_data_rate) || (4 < adc_sinc) || ((adc_data_rate < 12) && (adc_sinc)) )
-		return 0.00;
-	
-	if ( !adc_normal_setting  )
-		base_freq	/= (adc_sinc + 1);
-	
-	if ( ch_chop )
-		base_freq	/= 2;
-	
-#if 0
-	printf( "base_freq = %lf\r\n", base_freq );
-	printf( "delay_setting = %lf\r\n", delay_setting  );
-	printf( "channel delay = %lf\r\n", (1 / base_freq) + delay_setting  );
-#endif
-	
-	return (1 / base_freq) + delay_setting;
-}
-
-
-void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
-{	
-	const ch_setting_t	tmp_ch_config	= { cc0, cc1, cc2, cc3 };
-	logical_ch_config( ch, tmp_ch_config );
-}
-
-void NAFE13388_Base::logical_ch_disable( int ch )
-{	
-	const uint16_t	clearingbit	= 0x1 << ch;
-	const uint16_t	bits		= bit_op( CH_CONFIG4, ~clearingbit, ~clearingbit );
-
-	channel_info_update( bits );
-}
 
 int32_t NAFE13388_Base::adc_read( int ch )
 {
@@ -282,7 +324,7 @@ float NAFE13388_Base::temperature( void )
 	return reg( DIE_TEMP ) / 64.0;
 }
 
-void NAFE13388_Base::gain_offset_coeff( const ref_points &ref )
+void NAFE13388_Base::gain_offset_coeff( const NAFE13388_Base::LogicalChannel::ref_points &ref )
 {
 	constexpr double	pga1x_voltage		= 5.0;
 	constexpr int		adc_resolution		= 24;
@@ -313,6 +355,9 @@ void NAFE13388_Base::gain_offset_coeff( const ref_points &ref )
 	reg( GAIN_COEFF0   + ref.coeff_index, gain_coeff_new   );
 	reg( OFFSET_COEFF0 + ref.coeff_index, offset_coeff_new );
 }
+
+
+using	ch_setting_t	= NAFE13388_Base::LogicalChannel::ch_setting_t;
 
 int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, int input_select, double reference_source_voltage, bool use_positive_side )
 {
@@ -413,7 +458,7 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 	if ( channel_in_use )
 		logical_ch_config( channel_selection, tmp_ch_config );
 	else
-		logical_ch_disable( channel_selection );
+		logical_channel[ channel_selection ].close();
 
 	return CalibrationError::NoError;
 }
