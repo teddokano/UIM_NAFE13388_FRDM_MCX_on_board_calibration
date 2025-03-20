@@ -72,11 +72,6 @@ void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
 
-void	cb( void )
-{
-	afe.read( data );
-}
-
 int main( void )
 {
 	out.printf( "***** Hello, NAFE13388 UIM board! *****\r\n" );
@@ -171,7 +166,7 @@ int main( void )
 	raw_t			data[ 14 ];
 	long			count		= 0;
 
-	set_DRDY_callback( cb );
+	printf( "data = 0x%lX\r\n", (uint32_t)data );
 
 	while ( true )
 	{
@@ -189,8 +184,6 @@ int main( void )
 		wait( 0.05 );
 	}
 }
-
-
 
 void reg_dump( RegVct reg_vctr )
 {
