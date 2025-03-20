@@ -41,7 +41,6 @@ void	reg_dump( NAFE13388_UIM::Register24 addr, int length );
 void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
-
 int main( void )
 {
 	out.printf( "***** Hello, NAFE13388 UIM board! *****\r\n" );
@@ -100,8 +99,6 @@ int main( void )
 	raw_t			data;
 	long			count		= 0;
 	constexpr float read_delay	= 0.025;
-
-	wait( 2 );
 
 	while ( true )
 	{

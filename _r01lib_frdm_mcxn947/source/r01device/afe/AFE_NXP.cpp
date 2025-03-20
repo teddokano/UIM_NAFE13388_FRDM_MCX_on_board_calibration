@@ -19,7 +19,7 @@ double	AFE_base::delay_accuracy	= 1.1;
 /* AFE_base class ******************************************/
 
 AFE_base::AFE_base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) : 
-	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN, 1 ), pin_nRESET( nRESET, 1 )
+	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN ), pin_nRESET( nRESET, 1 )
 {
 }
 
@@ -27,11 +27,36 @@ AFE_base::~AFE_base()
 {
 }
 
+void AFE_base::init( void )
+{
+	pin_DRDY.rise( DRDY_cb );
+	set_DRDY_callback( [this](void){ default_drdy_cb(); } );
+}
+
 void AFE_base::begin( void )
 {
 	reset();
-	boot();	
+	boot();
+	init();
 }
+
+void AFE_base::set_DRDY_callback( callback_fp_t func )
+{
+	cbf_DRDY		= func;
+}
+
+void AFE_base::DRDY_cb( void )
+{
+	drdy_count++;
+	if ( cbf_DRDY )
+		cbf_DRDY();
+}
+
+void AFE_base::default_drdy_cb( void )
+{
+}
+
+
 
 int32_t AFE_base::start_and_read( int ch )
 {
@@ -62,6 +87,8 @@ int AFE_base::bit_count( uint32_t value )
 	return count;
 }
 
+AFE_base::callback_fp_t	AFE_base::cbf_DRDY		= nullptr;
+uint32_t				AFE_base::drdy_count	= 0;
 
 /* NAFE13388_Base class ******************************************/
 

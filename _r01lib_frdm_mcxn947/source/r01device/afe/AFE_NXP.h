@@ -49,6 +49,7 @@
 #include	<vector>
 #include	<variant>
 
+
 class AFE_base : public SPI_for_AFE
 {
 public:
@@ -78,6 +79,10 @@ public:
 
 	/** Issue RESET command */
 	virtual void reset( bool hardware_reset = false )	= 0;
+	
+	/** set callback function when DRDY comes */
+	using	callback_fp_t	= std::function<void(void)>;
+	virtual void set_DRDY_callback( callback_fp_t fnc );
 	
 	/** Configure logical channel
 	 *
@@ -162,23 +167,30 @@ public:
 	}
 	
 protected:
-	int 	bit_count( uint32_t value );
-	
+	int 			bit_count( uint32_t value );
+
 	/** Number of enabled logical channels */
-	int		enabled_channels;
+	int				enabled_channels;
 	
 	/** Coefficient to convert from ADC read value to micro-volt */
-	double	coeff_uV[ 16 ];
+	double			coeff_uV[ 16 ];
 
 	/** Channel delay */
-	double	ch_delay[ 16 ];
-	double	total_delay;
+	double			ch_delay[ 16 ];
+	double			total_delay;
 	static double	delay_accuracy;
 
-	DigitalIn	pin_nINT;
-	DigitalIn	pin_DRDY;
-	DigitalOut	pin_SYN;
-	DigitalOut	pin_nRESET;
+	InterruptIn		pin_nINT;
+	InterruptIn		pin_DRDY;
+	DigitalOut		pin_SYN;
+	DigitalOut		pin_nRESET;
+
+	virtual void			init( void );
+	void					default_drdy_cb( void );
+	
+	static uint32_t			drdy_count;
+	static void				DRDY_cb( void );
+	static callback_fp_t	cbf_DRDY;
 };
 
 class NAFE13388_Base : public AFE_base
