@@ -61,7 +61,7 @@ int main( void )
 	//
 
 	for ( auto i = 0U; i < sizeof( chs ) / sizeof( ch_setting_t ); i++ )
-		afe.logical_ch_config( i, chs[ i ] );
+		afe.open_logical_channel( i, chs[ i ] );
 
 	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
 	logical_ch_config_view();
@@ -100,6 +100,8 @@ int main( void )
 	raw_t			data;
 	long			count		= 0;
 	constexpr float read_delay	= 0.025;
+
+	wait( 2 );
 
 	while ( true )
 	{

@@ -35,7 +35,7 @@ void AFE_base::begin( void )
 
 int32_t AFE_base::start_and_read( int ch )
 {
-	start();
+	start( ch );
 	wait( ch_delay[ ch ] * delay_accuracy );
 	
 	return read( ch );
@@ -109,7 +109,7 @@ void NAFE13388_Base::reset( bool hardware_reset )
 	panic( "NAFE13388 couldn't get ready. Check power supply or pin conections\r\n" );
 }
 
-void NAFE13388_Base::logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )
+void NAFE13388_Base::open_logical_channel( int ch, const uint16_t (&cc)[ 4 ] )
 {	
 	command( ch );
 	
@@ -179,7 +179,7 @@ double NAFE13388_Base::calc_delay( int ch )
 	if ( ch_chop )
 		base_freq	/= 2;
 	
-#if 0
+#if 1
 	printf( "base_freq = %lf\r\n", base_freq );
 	printf( "delay_setting = %lf\r\n", delay_setting  );
 	printf( "channel delay = %lf\r\n", (1 / base_freq) + delay_setting  );
@@ -189,18 +189,24 @@ double NAFE13388_Base::calc_delay( int ch )
 }
 
 
-void NAFE13388_Base::logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
+void NAFE13388_Base::open_logical_channel( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )
 {	
 	const ch_setting_t	tmp_ch_config	= { cc0, cc1, cc2, cc3 };
-	logical_ch_config( ch, tmp_ch_config );
+	open_logical_channel( ch, tmp_ch_config );
 }
 
-void NAFE13388_Base::logical_ch_disable( int ch )
+void NAFE13388_Base::close_logical_channel( int ch )
 {	
 	const uint16_t	clearingbit	= 0x1 << ch;
 	const uint16_t	bits		= bit_op( CH_CONFIG4, ~clearingbit, ~clearingbit );
 
 	channel_info_update( bits );
+}
+
+void NAFE13388_Base::close_logical_channel( void )
+{	
+	reg( CH_CONFIG4, 0x0000 );
+	channel_info_update( 0x0000 );
 }
 
 void NAFE13388_Base::start( int ch )
@@ -339,7 +345,7 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 		input_select				= low_gain ? 0x5 : 0x6;
 		reference_source_voltage	= (reg( low_gain ? OPT_COEF1 : OPT_COEF2 ) * 5.00) / (double)(1 << 24);
 
-#if 0
+#if 1
 		printf( "==== self-calibration for PGA gain setting: x%3.1lf\r\n", pga_gain[ gain_index ] );
 		printf( "gain = %s\r\n", low_gain ? "low" : "high" );
 		printf( "REF[H|L] = %10.8lfV\r\n", reference_source_voltage );
@@ -370,13 +376,13 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 	
 	//	measure the logical channel with those different 3 settings
 	
-	logical_ch_config( channel_selection, refh );	
+	open_logical_channel( channel_selection, refh );	
 	raw_t	data_REF	= start_and_read( channel_selection );
 
-	logical_ch_config( channel_selection, refg );
+	open_logical_channel( channel_selection, refg );
 	raw_t	data_GND	= start_and_read( channel_selection );
 
-	logical_ch_config( channel_selection, refc );
+	open_logical_channel( channel_selection, refc );
 	raw_t	data_COM	= start_and_read( channel_selection );
 
 	//	calculation
@@ -407,9 +413,9 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 	//	if the channel was in-use, revert the setting
 	
 	if ( channel_in_use )
-		logical_ch_config( channel_selection, tmp_ch_config );
+		open_logical_channel( channel_selection, tmp_ch_config );
 	else
-		logical_ch_disable( channel_selection );
+		close_logical_channel( channel_selection );
 
 	return CalibrationError::NoError;
 }

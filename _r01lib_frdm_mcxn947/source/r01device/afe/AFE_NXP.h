@@ -25,8 +25,8 @@
  *  
  *  	afe.begin();
  *  
- *  	afe.logical_ch_config( 0, 0x1070, 0x0084, 0x2900, 0x0000 );
- *  	afe.logical_ch_config( 1, 0x2070, 0x0084, 0x2900, 0x0000 );
+ *  	afe.open_logical_channel( 0, 0x1070, 0x0084, 0x2900, 0x0000 );
+ *  	afe.open_logical_channel( 1, 0x2070, 0x0084, 0x2900, 0x0000 );
  *  
  *  	while ( true )
  *  	{		
@@ -87,20 +87,21 @@ public:
 	 * @param cc2	16bit value to be set CH_CONFIG2 register (0x22)
 	 * @param cc3	16bit value to be set CH_CONFIG3 register (0x23)
 	 */
-	virtual void logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )	= 0;
+	virtual void open_logical_channel( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 )	= 0;
 
 	/** Configure logical channel
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 * @param cc array for CH_CONFIG0, CH_CONFIG1, CH_CONFIG2 and CH_CONFIG3 values
 	 */
-	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] )	= 0;
+	virtual void open_logical_channel( int ch, const uint16_t (&cc)[ 4 ] )	= 0;
 
 	/** Logical channel disable
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
-	virtual void logical_ch_disable( int ch )	= 0;
+	virtual void close_logical_channel( int ch )	= 0;
+	virtual void close_logical_channel( void )		= 0;
 
 	/** Start ADC
 	 *
@@ -210,14 +211,14 @@ public:
 	 * @param cc2	16bit value to be set CH_CONFIG2 register (0x22)
 	 * @param cc3	16bit value to be set CH_CONFIG3 register (0x23)
 	 */
-	virtual void logical_ch_config( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 );
+	virtual void open_logical_channel( int ch, uint16_t cc0, uint16_t cc1, uint16_t cc2, uint16_t cc3 );
 
 	/** Configure logical channel
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 * @param cc array for CH_CONFIG0, CH_CONFIG1, CH_CONFIG2 and CH_CONFIG3 values
 	 */
-	virtual void logical_ch_config( int ch, const uint16_t (&cc)[ 4 ] );
+	virtual void open_logical_channel( int ch, const uint16_t (&cc)[ 4 ] );
 
 private:	
 	double 	calc_delay( int ch );
@@ -228,7 +229,8 @@ public:
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
-	virtual void logical_ch_disable( int ch );
+	virtual void close_logical_channel( int ch );
+	virtual void close_logical_channel( void );
 
 	/** Start ADC
 	 *
