@@ -33,30 +33,21 @@ void AFE_base::begin( void )
 	boot();	
 }
 
-template<> 
-int32_t AFE_base::read( int ch, float delay )
+int32_t AFE_base::start_and_read( int ch )
 {
-	if ( delay == INFINITY )
-		delay	= ch_delay[ ch ] * delay_accuracy;
+	start();
+	wait( ch_delay[ ch ] * delay_accuracy );
 	
-	start_and_delay( ch, delay );
-	return adc_read( ch );
+	return read( ch );
 };
 
-template<>
-double AFE_base::read( int ch, float delay )
+void AFE_base::start_and_read( raw_t *data )
 {
-	return read<int32_t>( ch, delay ) * coeff_uV[ ch ];
+	start();
+	wait( total_delay * delay_accuracy );
+	
+	return read( data );
 };
-
-void AFE_base::start_and_delay( int ch, float delay )
-{
-	if ( delay >= 0.0 )
-	{
-		start( ch );
-		wait( delay );
-	}
-}
 
 int AFE_base::bit_count( uint32_t value )
 {
@@ -212,26 +203,31 @@ void NAFE13388_Base::logical_ch_disable( int ch )
 	channel_info_update( bits );
 }
 
-int32_t NAFE13388_Base::adc_read( int ch )
+void NAFE13388_Base::start( int ch )
 {
-	return reg( CH_DATA0 + ch );
+	bit_op( SYS_CONFIG0, ~0x0010, 0x0000 );
+	
+	command( ch     );
+	command( CMD_SS );
 }
 
-void NAFE13388_Base::multi_read( raw_t *data )
+void NAFE13388_Base::start( void )
 {
 	bit_op( SYS_CONFIG0, ~0x0010, 0x0010 );
 	
 	command( CMD_MM );
-	wait( total_delay * delay_accuracy );
-	
+}
+
+int32_t NAFE13388_Base::read( int ch )
+{
+	return reg( CH_DATA0 + ch );
+}
+
+void NAFE13388_Base::read( raw_t *data )
+{
 	burst( (uint32_t *)data, enabled_channels );
 }
 
-void NAFE13388_Base::start( int ch )
-{
-	command( ch     );
-	command( CMD_SS );
-}
 
 void NAFE13388_Base::command( uint16_t com )
 {
@@ -343,7 +339,7 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 		input_select				= low_gain ? 0x5 : 0x6;
 		reference_source_voltage	= (reg( low_gain ? OPT_COEF1 : OPT_COEF2 ) * 5.00) / (double)(1 << 24);
 
-#if 1
+#if 0
 		printf( "==== self-calibration for PGA gain setting: x%3.1lf\r\n", pga_gain[ gain_index ] );
 		printf( "gain = %s\r\n", low_gain ? "low" : "high" );
 		printf( "REF[H|L] = %10.8lfV\r\n", reference_source_voltage );
@@ -375,23 +371,23 @@ int NAFE13388_Base::self_calibrate( int pga_gain_index, int channel_selection, i
 	//	measure the logical channel with those different 3 settings
 	
 	logical_ch_config( channel_selection, refh );	
-	raw_t	data_REF	= read<raw_t>( channel_selection );
+	raw_t	data_REF	= start_and_read( channel_selection );
 
 	logical_ch_config( channel_selection, refg );
-	raw_t	data_GND	= read<raw_t>( channel_selection );
+	raw_t	data_GND	= start_and_read( channel_selection );
 
 	logical_ch_config( channel_selection, refc );
-	raw_t	data_COM	= read<raw_t>( channel_selection );
+	raw_t	data_COM	= start_and_read( channel_selection );
 
 	//	calculation
 	
 	const double	fullscale_voltage	= 5.00 / pga_gain[ gain_index ];
 	const double	calibrated_gain		= (double)(0x1 << 23) * (reference_source_voltage / fullscale_voltage) / (double)(data_REF - data_GND);
 
-#if 1
-	printf( "data_REF = %8ld (%lfV)\r\n",  data_REF, raw2v(  data_REF, channel_selection ) );
-	printf( "data_GND = %8ld (%lfmV)\r\n", data_GND, raw2mv( data_GND, channel_selection ) );
-	printf( "data_COM = %8ld (%lfmV)\r\n", data_COM, raw2mv( data_COM, channel_selection ) );
+#if 0
+	printf( "data_REF = %8ld (%lfV)\r\n",  data_REF, raw2v(  channel_selection, data_REF ) );
+	printf( "data_GND = %8ld (%lfmV)\r\n", data_GND, raw2mv( channel_selection, data_GND ) );
+	printf( "data_COM = %8ld (%lfmV)\r\n", data_COM, raw2mv( channel_selection, data_COM ) );
 	printf( "gain adjustment = %8lf (%lfdB)\r\n\r\n", calibrated_gain, 20 * log10( calibrated_gain ) );
 #endif
 	

@@ -102,38 +102,27 @@ public:
 	 */
 	virtual void logical_ch_disable( int ch )	= 0;
 
-	/** ADC channel read
-	 *
-	 * @param ch logical channel number (0 ~ 15)
-	 */
-	virtual int32_t	adc_read( int ch )	= 0;
-
-	/** Read ADC
-	 *	Performs ADC read. 
-	 *	If the delay is not given, just the ADC register is read.
-	 *	If the delay is given, measurement is started in this method and read-out after delay.
-	 *	The delay between start and read-out is specified in seconds. 
-	 *	
-	 *	This method need to be called with return type as 
-	 *	    double value = read<NAFE13388::microvolt_t>( 0, 0.01 );
-	 *	    int32_t value = read<NAFE13388::raw_t>( 0, 0.01 );
-	 *	
-	 * @param ch logical channel number (0 ~ 15)
-	 * @param delay ADC result read-out delay after measurement start if given
-	 * @return ADC readout value
-	 */
-	template<class T>
-	T read( int ch, float delay = default_delay );
-
-	virtual void multi_read( raw_t *data )		= 0;
-	//virtual void multi_read( microvolt_t *data )	= 0;
-	
 	/** Start ADC
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
 	virtual void start( int ch )	= 0;
+	virtual void start()			= 0;
 
+	/** Read ADC
+	 *
+	 * @param ch logical channel number (0 ~ 15)
+	 */
+	virtual raw_t	read( int ch )		= 0;
+	virtual void	read( raw_t *data )	= 0;
+
+	/** Start and read ADC
+	 *
+	 * @param ch logical channel number (0 ~ 15)
+	 */
+	virtual raw_t	start_and_read( int ch );
+	virtual void	start_and_read( raw_t *data );
+	
 	/** Number of enabled logical channels */
 	int		enabled_channels;
 	
@@ -152,15 +141,21 @@ public:
 		return value * coeff_uV[ ch ] * 1e-6;
 	}
 	
+	inline double coeff_mV( int ch, raw_t value )
+	{
+		return coeff_uV[ ch ];
+	}
+	
 	inline double drdy_delay( int ch )
 	{
 		return ch_delay[ ch ];
 	}
+
+	inline double drdy_delay( void )
+	{
+		return total_delay;
+	}
 	
-private:
-	void	start_and_delay( int ch, float delay );
-
-
 protected:
 	int 	bit_count( uint32_t value );
 
@@ -171,7 +166,6 @@ protected:
 	double	ch_delay[ 16 ];
 	double	total_delay;
 	static double	delay_accuracy;
-
 
 	DigitalIn	pin_nINT;
 	DigitalIn	pin_DRDY;
@@ -236,21 +230,19 @@ public:
 	 */
 	virtual void logical_ch_disable( int ch );
 
-	/** ADC channel read
-	 *
-	 * @param ch logical channel number (0 ~ 15)
-	 */
-	virtual int32_t	adc_read( int ch );
-
-	void multi_read( raw_t *data );
-	void multi_read( microvolt_t *data );
-
-	
 	/** Start ADC
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
 	virtual void start( int ch );
+	virtual void start();
+
+	/** Read ADC
+	 *
+	 * @param ch logical channel number (0 ~ 15)
+	 */
+	virtual raw_t	read( int ch );
+	virtual void	read( raw_t *data );
 
 	constexpr static double	pga_gain[]	= { 0.2, 0.4, 0.8, 1, 2, 4, 8, 16 };
 

@@ -102,7 +102,7 @@ int main( void )
 	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
 	logical_ch_config_view();
 
-#if 0
+#if 1
 	//
 	//	gain/offset coefficient settings
 	//
@@ -113,6 +113,7 @@ int main( void )
 	//	on-board re-calibration for "PGA_gain = 0.2" coefficients
 
 #if 0
+	out.printf( "\r\n=== Self-calibration in progress.. ===\r\n" );
 	afe.self_calibrate( 0 );
 
 	out.printf( "\r\n=== GAIN_COEFF and OFFSET_COEFF registers after on-board calibration ===\r\n" );
@@ -171,7 +172,7 @@ int main( void )
 	{
 		out.printf( " %8ld, ", count++ );
 		
-		afe.multi_read( data );
+		afe.start_and_read( data );
 
 		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
 		{
