@@ -19,7 +19,7 @@ double	AFE_base::delay_accuracy	= 1.1;
 /* AFE_base class ******************************************/
 
 AFE_base::AFE_base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) : 
-	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN ), pin_nRESET( nRESET, 1 )
+	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN ), pin_nRESET( nRESET, 1 )//, use_DRDY( true )
 {
 }
 
@@ -30,6 +30,8 @@ AFE_base::~AFE_base()
 void AFE_base::init( void )
 {
 	pin_DRDY.rise( DRDY_cb );
+	
+	drdy_flag		= false;
 	set_DRDY_callback( [this](void){ default_drdy_cb(); } );
 }
 
@@ -47,29 +49,32 @@ void AFE_base::set_DRDY_callback( callback_fp_t func )
 
 void AFE_base::DRDY_cb( void )
 {
-	drdy_count++;
 	if ( cbf_DRDY )
 		cbf_DRDY();
 }
 
 void AFE_base::default_drdy_cb( void )
 {
+	drdy_count++;
+	drdy_flag		= true;
 }
-
-
 
 int32_t AFE_base::start_and_read( int ch )
 {
+	double	wait_time	= cbf_DRDY ? -1.0 : ch_delay[ ch ] * delay_accuracy;
+	
 	start( ch );
-	wait( ch_delay[ ch ] * delay_accuracy );
+	wait_conversion_complete( wait_time );
 	
 	return read( ch );
 };
 
 void AFE_base::start_and_read( raw_t *data )
 {
+	double	wait_time	= cbf_DRDY ? -1.0 : total_delay * delay_accuracy;
+	
 	start();
-	wait( total_delay * delay_accuracy );
+	wait_conversion_complete( wait_time );
 	
 	return read( data );
 };
@@ -87,8 +92,32 @@ int AFE_base::bit_count( uint32_t value )
 	return count;
 }
 
+//constexpr uint32_t	AFE_base::timeout_limit	= 100000000;
+
+int AFE_base::wait_conversion_complete( double delay )
+{
+	if ( 0 < delay )
+	{
+		wait( delay * delay_accuracy );
+		return	0;
+	}
+
+	auto	timeout_count	= 100000000UL;
+
+	while ( !drdy_flag && --timeout_count )
+		;
+
+	drdy_flag	= false;
+	
+	if ( !timeout_count )
+	{
+		printf( "DRDY signal wait timeout\r\n" );
+		return	-1;
+	}
+	return	0;
+}
+
 AFE_base::callback_fp_t	AFE_base::cbf_DRDY		= nullptr;
-uint32_t				AFE_base::drdy_count	= 0;
 
 /* NAFE13388_Base class ******************************************/
 

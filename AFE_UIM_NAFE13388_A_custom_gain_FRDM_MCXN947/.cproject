@@ -361,6 +361,12 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="com.crt.advproject.config.exe.debug.1450804368.776150390" name="main.cpp" rcbsApplicability="disable" resourcePath="source/main.cpp" toolsToInvoke="com.crt.advproject.cpp.exe.debug.2138363111.1658141358">
+						<tool id="com.crt.advproject.cpp.exe.debug.2138363111.1658141358" name="MCU C++ Compiler" superClass="com.crt.advproject.cpp.exe.debug.2138363111">
+							<option id="com.crt.advproject.cpp.exe.debug.option.optimization.level.1495633981" name="Optimization Level" superClass="com.crt.advproject.cpp.exe.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
+							<inputType id="com.crt.advproject.compiler.cpp.input.1468517037" superClass="com.crt.advproject.compiler.cpp.input"/>
+						</tool>
+					</fileInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="_r01lib_irq"/>
 						<entry flags="LOCAL|VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="source"/>

@@ -179,18 +179,25 @@ protected:
 	double			ch_delay[ 16 ];
 	double			total_delay;
 	static double	delay_accuracy;
-
+	
 	InterruptIn		pin_nINT;
 	InterruptIn		pin_DRDY;
 	DigitalOut		pin_SYN;
 	DigitalOut		pin_nRESET;
 
+	uint32_t		drdy_count;
+	volatile bool	drdy_flag;
+
+	constexpr static uint32_t	timeout_limit	= 100000000;
+
+	static callback_fp_t	cbf_DRDY;
+
 	virtual void			init( void );
 	void					default_drdy_cb( void );
 	
-	static uint32_t			drdy_count;
 	static void				DRDY_cb( void );
-	static callback_fp_t	cbf_DRDY;
+	int						wait_conversion_complete( double delay = -1.0 );
+
 };
 
 class NAFE13388_Base : public AFE_base
