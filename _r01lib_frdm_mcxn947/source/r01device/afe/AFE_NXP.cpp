@@ -102,7 +102,7 @@ int AFE_base::wait_conversion_complete( double delay )
 		return	0;
 	}
 
-	auto	timeout_count	= 100000000UL;
+	auto	timeout_count	= timeout_limit;
 
 	while ( !drdy_flag && --timeout_count )
 		;
@@ -268,7 +268,6 @@ void NAFE13388_Base::close_logical_channel( void )
 void NAFE13388_Base::start( int ch )
 {
 	bit_op( SYS_CONFIG0, ~0x0010, 0x0000 );
-	
 	command( ch     );
 	command( CMD_SS );
 }
@@ -276,8 +275,13 @@ void NAFE13388_Base::start( int ch )
 void NAFE13388_Base::start( void )
 {
 	bit_op( SYS_CONFIG0, ~0x0010, 0x0010 );
-	
 	command( CMD_MM );
+}
+
+void NAFE13388_Base::start_continuous_conversion( void )
+{
+	bit_op( SYS_CONFIG0, ~0x0010, 0x0010 );
+	command( CMD_MC );
 }
 
 int32_t NAFE13388_Base::read( int ch )

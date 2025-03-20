@@ -112,8 +112,9 @@ public:
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
-	virtual void start( int ch )	= 0;
-	virtual void start()			= 0;
+	virtual void start( int ch )					= 0;
+	virtual void start()							= 0;
+	virtual void start_continuous_conversion()		= 0;
 
 	/** Read ADC
 	 *
@@ -264,6 +265,7 @@ public:
 	 */
 	virtual void start( int ch );
 	virtual void start();
+	virtual void start_continuous_conversion();
 
 	/** Read ADC
 	 *
