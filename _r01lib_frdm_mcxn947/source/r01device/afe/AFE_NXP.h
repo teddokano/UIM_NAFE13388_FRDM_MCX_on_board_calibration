@@ -124,9 +124,6 @@ public:
 	virtual raw_t	start_and_read( int ch );
 	virtual void	start_and_read( raw_t *data );
 	
-	/** Number of enabled logical channels */
-	int		enabled_channels;
-	
 	inline double raw2uv( int ch, raw_t value )
 	{
 		return value * coeff_uV[ ch ];
@@ -142,6 +139,7 @@ public:
 		return value * coeff_uV[ ch ] * 1e-6;
 	}
 	
+	/** Coefficient to convert from ADC read value to micro-volt */
 	inline double coeff_mV( int ch, raw_t value )
 	{
 		return coeff_uV[ ch ];
@@ -156,10 +154,19 @@ public:
 	{
 		return total_delay;
 	}
+
+	/** Number of enabled logical channels */
+	inline int enabled_ligical_channels( void )
+	{
+		return enabled_channels;
+	}
 	
 protected:
 	int 	bit_count( uint32_t value );
-
+	
+	/** Number of enabled logical channels */
+	int		enabled_channels;
+	
 	/** Coefficient to convert from ADC read value to micro-volt */
 	double	coeff_uV[ 16 ];
 
