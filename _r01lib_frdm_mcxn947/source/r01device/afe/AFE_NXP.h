@@ -105,16 +105,16 @@ public:
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
-	virtual void close_logical_channel( int ch )	= 0;
-	virtual void close_logical_channel( void )		= 0;
+	virtual void close_logical_channel( int ch )		= 0;
+	virtual void close_logical_channel( void )			= 0;
 
 	/** Start ADC
 	 *
 	 * @param ch logical channel number (0 ~ 15)
 	 */
-	virtual void start( int ch )					= 0;
-	virtual void start()							= 0;
-	virtual void start_continuous_conversion()		= 0;
+	virtual void start( int ch )						= 0;
+	virtual void start( void )							= 0;
+	virtual void start_continuous_conversion( void )	= 0;
 
 	/** Read ADC
 	 *
@@ -162,7 +162,7 @@ public:
 	}
 
 	/** Number of enabled logical channels */
-	inline int enabled_ligical_channels( void )
+	inline int enabled_logical_channels( void )
 	{
 		return enabled_channels;
 	}
@@ -264,7 +264,7 @@ public:
 	 * @param ch logical channel number (0 ~ 15)
 	 */
 	virtual void start( int ch );
-	virtual void start();
+	virtual void start( void );
 	virtual void start_continuous_conversion();
 
 	/** Read ADC

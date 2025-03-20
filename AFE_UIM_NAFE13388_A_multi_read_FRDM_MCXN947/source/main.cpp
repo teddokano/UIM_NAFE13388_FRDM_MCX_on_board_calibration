@@ -72,6 +72,11 @@ void	logical_ch_config_view( void );
 void	table_view( int size, int cols, std::function<void(int)> view, std::function<void(void)> linefeed = nullptr );
 
 
+void	cb( void )
+{
+	afe.read( data );
+}
+
 int main( void )
 {
 	out.printf( "***** Hello, NAFE13388 UIM board! *****\r\n" );
@@ -99,7 +104,7 @@ int main( void )
 	for ( auto i = 0U; i < sizeof( chs ) / sizeof( ch_setting_t ); i++ )
 		afe.open_logical_channel( i, chs[ i ] );
 
-	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_channels );
+	out.printf( "\r\nenabled logical channel(s) %2d\r\n", afe.enabled_logical_channels() );
 	logical_ch_config_view();
 
 #if 1
@@ -166,7 +171,7 @@ int main( void )
 	raw_t			data[ 14 ];
 	long			count		= 0;
 
-	printf( "data = 0x%lX\r\n", (uint32_t)data );
+	set_DRDY_callback( cb );
 
 	while ( true )
 	{
@@ -174,7 +179,7 @@ int main( void )
 		
 		afe.start_and_read( data );
 
-		for ( auto ch = 0; ch < afe.enabled_channels; ch++ )
+		for ( auto ch = 0; ch < afe.enabled_logical_channels(); ch++ )
 		{
 			out.color( ch % 2 ? PrintOutput::Color::bg_none : PrintOutput::Color::bg_gray );
 			out.printf( " %8ld,", data[ ch ] );
@@ -184,6 +189,8 @@ int main( void )
 		wait( 0.05 );
 	}
 }
+
+
 
 void reg_dump( RegVct reg_vctr )
 {

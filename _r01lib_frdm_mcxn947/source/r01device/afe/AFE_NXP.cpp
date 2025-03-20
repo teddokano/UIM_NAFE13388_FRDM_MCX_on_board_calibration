@@ -19,7 +19,7 @@ double	AFE_base::delay_accuracy	= 1.1;
 /* AFE_base class ******************************************/
 
 AFE_base::AFE_base( SPI& spi, int nINT, int DRDY, int SYN, int nRESET ) : 
-	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN ), pin_nRESET( nRESET, 1 )//, use_DRDY( true )
+	SPI_for_AFE( spi ), enabled_channels( 0 ), pin_nINT( nINT ), pin_DRDY( DRDY ), pin_SYN( SYN ), pin_nRESET( nRESET, 1 )
 {
 }
 
@@ -91,8 +91,6 @@ int AFE_base::bit_count( uint32_t value )
 	
 	return count;
 }
-
-//constexpr uint32_t	AFE_base::timeout_limit	= 100000000;
 
 int AFE_base::wait_conversion_complete( double delay )
 {
@@ -235,7 +233,7 @@ double NAFE13388_Base::calc_delay( int ch )
 	if ( ch_chop )
 		base_freq	/= 2;
 	
-#if 1
+#if 0
 	printf( "base_freq = %lf\r\n", base_freq );
 	printf( "delay_setting = %lf\r\n", delay_setting  );
 	printf( "channel delay = %lf\r\n", (1 / base_freq) + delay_setting  );
